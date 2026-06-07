@@ -1,0 +1,34 @@
+[
+  {
+    "file": "src/main.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "src/main.c",
+      "-o",
+      "build/tetris",
+      "-Wall",
+      "-Wextra",
+      "-std=c99",
+      "-Isrc",
+      "-Ilibs/raylib/src"
+    ],
+    "directory": "/home/liams/projects/tetris_clone",
+    "output": "build/tetris"
+  },
+  {
+    "file": "src/tetromino.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "src/tetromino.c",
+      "-o",
+      "build/tetris",
+      "-Wall",
+      "-Wextra",
+      "-std=c99",
+      "-Isrc",
+      "-Ilibs/raylib/src"
+    ],
+    "directory": "/home/liams/projects/tetris_clone",
+    "output": "build/tetris"
+  }
+]
