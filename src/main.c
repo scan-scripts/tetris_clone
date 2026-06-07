@@ -32,7 +32,7 @@ show next 3 pieces (optional with menu)
 level select in menu
 different randomization
 music
-refactor so gamestate is global
+refactor so gamestate is global variable
 
 
 */
@@ -47,6 +47,9 @@ Color colors[8] = {
     PURPLE,  // S
     BLUE     // Z
 };
+
+// GLOBAL GAME STATE
+GameState gameState = {0};
 
 void GetTetrominoGridPoints(Tetromino tetromino, Point *gridPoints) {
     for (int i = 0; i < 4; i++) {
@@ -312,7 +315,7 @@ void DrawTetrominoShadow(Tetromino tetromino) {
     Point gridPoints[4] = {0};
     GetTetrominoGridPoints(tetromino, gridPoints);
     for (int i = 0; i < 4; i++) {
-        DrawShadowSquare(gridPoints[i], colors[tetromino.type]);
+        DrawShadowSquare(gridPoints[i], WHITE);
     }
 }
 
@@ -386,29 +389,29 @@ void ShowPauseMenu() {
     DrawCenteredTextInRec("PAUSE", 60, LIGHTGRAY, rec);
 }
 
-void ShowGameOverMenu(GameState gameState) {
+void ShowGameOverMenu() {
     Rectangle rec = {0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2.0, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2.0};
     DrawRectangleRec(rec, RED);
-    DrawCenteredTextInRec(
-        TextFormat("GAME OVER\nLines cleared: %i\nScore: %d", gameState.linesCleared, gameState.score), 60, LIGHTGRAY,
-        rec);
+    DrawCenteredTextInRec(TextFormat("GAME OVER\nLines cleared: %i\nScore: %d\nlevel = %d", gameState.linesCleared,
+                                     gameState.score, gameState.level),
+                          60, LIGHTGRAY, rec);
 }
 
-void UpdateGame(GameState *p_gameState, float dT) {
+void UpdateGame(float dT) {
     if (IsKeyPressed(KEY_F11)) {
         ToggleFullscreen();
     }
     if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_P)) {
-        p_gameState->pause = !p_gameState->pause;
+        gameState.pause = !gameState.pause;
     }
-    if (p_gameState->pause) {
+    if (gameState.pause) {
         return;
     }
     if (IsKeyPressed(KEY_C) || IsKeyPressed(KEY_H)) {
-        HoldCurrent(p_gameState);
+        HoldCurrent(&gameState);
     }
     if (IsKeyPressed(KEY_UP)) {
-        RotateCurrentTetromino(p_gameState);
+        RotateCurrentTetromino(&gameState);
     }
 
     int dir = 0;
@@ -422,53 +425,53 @@ void UpdateGame(GameState *p_gameState, float dT) {
 
     // initial press = immediate move
     if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
-        MoveCurrentTetrominoSide(p_gameState, dir);
-        p_gameState->moveTimer = 0.0f;
+        MoveCurrentTetrominoSide(&gameState, dir);
+        gameState.moveTimer = 0.0f;
     }
 
     // held movement
     if (dir != 0 && !IsKeyPressed(KEY_LEFT) && !IsKeyPressed(KEY_RIGHT)) {
-        p_gameState->moveTimer += dT;
+        gameState.moveTimer += dT;
 
-        if (p_gameState->moveTimer >= p_gameState->moveDelay) {
-            MoveCurrentTetrominoSide(p_gameState, dir);
+        if (gameState.moveTimer >= gameState.moveDelay) {
+            MoveCurrentTetrominoSide(&gameState, dir);
 
             // switch to repeat interval after delay
-            p_gameState->moveTimer = p_gameState->moveDelay - p_gameState->moveInterval;
+            gameState.moveTimer = gameState.moveDelay - gameState.moveInterval;
         }
     } else {
-        p_gameState->moveTimer = 0.0f;
+        gameState.moveTimer = 0.0f;
     }
 
     if (IsKeyPressed(KEY_DOWN)) {
-        StepCurrentTetrominoDown(p_gameState);
-        p_gameState->fallTimer = 0.0f;
-        p_gameState->softDropTimer = 0.0f;
+        StepCurrentTetrominoDown(&gameState);
+        gameState.fallTimer = 0.0f;
+        gameState.softDropTimer = 0.0f;
     }
 
     if (IsKeyDown(KEY_DOWN)) {
-        p_gameState->softDropTimer += dT;
+        gameState.softDropTimer += dT;
 
-        if (p_gameState->softDropTimer >= p_gameState->softDropInterval) {
-            StepCurrentTetrominoDown(p_gameState);
-            p_gameState->softDropTimer = 0.0f;
-            p_gameState->fallTimer = 0.0f;
+        if (gameState.softDropTimer >= gameState.softDropInterval) {
+            StepCurrentTetrominoDown(&gameState);
+            gameState.softDropTimer = 0.0f;
+            gameState.fallTimer = 0.0f;
         }
     } else {
-        p_gameState->softDropTimer = 0.0f;
+        gameState.softDropTimer = 0.0f;
     }
 
     if (IsKeyPressed(KEY_SPACE)) {
-        FastDrop(p_gameState);
+        FastDrop(&gameState);
     }
 
-    p_gameState->fallTimer += dT;
+    gameState.fallTimer += dT;
 
     // TODO move the clear lines call into update
 
-    if (p_gameState->fallTimer >= p_gameState->fallInterval) {
-        StepCurrentTetrominoDown(p_gameState);
-        p_gameState->fallTimer = 0.0f;
+    if (gameState.fallTimer >= gameState.fallInterval) {
+        StepCurrentTetrominoDown(&gameState);
+        gameState.fallTimer = 0.0f;
     }
 }
 
@@ -539,29 +542,40 @@ void DrawGame(GameState *p_gameState) {
     DrawText(TextFormat("Lines cleared: %i\nScore: %d ", p_gameState->linesCleared, p_gameState->score), 0, 0, 20, RED);
 }
 
-void InitGameState(GameState *p_gameState) {
-    p_gameState->gameOver = false;
-    p_gameState->pause = false;
+void ClearBoard() {
 
-    p_gameState->board[BOARD_HEIGHT - 1][0] = T;
-    p_gameState->board[BOARD_HEIGHT - 1][1] = T;
-    p_gameState->board[BOARD_HEIGHT - 1][2] = T;
-    p_gameState->board[BOARD_HEIGHT - 2][1] = T;
+    for (int i = 0; i < BOARD_HEIGHT; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            gameState.board[i][j] = 0;
+        }
+    }
+}
 
-    p_gameState->current = (Tetromino){L, UP, 6, 5};
-    p_gameState->next = (Tetromino){S, UP, 4, 0};
+void InitGameState() {
 
-    p_gameState->fallTimer = 0.0f;
-    p_gameState->fallInterval = 0.5f;
+    ClearBoard();
 
-    p_gameState->moveTimer = 0.0f;
-    p_gameState->moveDelay = 0.15f;
-    p_gameState->moveInterval = 0.05f;
+    RandomTetromino(&gameState.current);
+    RandomTetromino(&gameState.next);
+    gameState.hold = (Tetromino){0};
 
-    p_gameState->softDropTimer = 0.0f;
-    p_gameState->softDropInterval = 0.05f;
+    gameState.fallTimer = 0.0f;
+    gameState.fallInterval = 0.5f;
 
-    p_gameState->level = 1;
+    gameState.moveTimer = 0.0f;
+    gameState.moveDelay = 0.15f;
+    gameState.moveInterval = 0.05f;
+
+    gameState.softDropTimer = 0.0f;
+    gameState.softDropInterval = 0.05f;
+
+    gameState.score = 0;
+    gameState.linesCleared = 0;
+    gameState.level = 1;
+
+    gameState.gameOver = false;
+    gameState.pause = false;
+    gameState.streak = false;
 }
 
 int main(void) {
@@ -575,9 +589,7 @@ int main(void) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(initialWindowWidth, initialWindowHeight, "Tetris");
-
-    GameState gameState = {0};
-    InitGameState(&gameState);
+    InitGameState();
 
     RenderTexture2D target = LoadRenderTexture(gameScreenWidth, gameScreenHeight);
     SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
@@ -599,7 +611,7 @@ int main(void) {
         BeginTextureMode(target);
         DrawGame(&gameState);
         if (gameState.gameOver) {
-            ShowGameOverMenu(gameState);
+            ShowGameOverMenu();
         }
         if (gameState.pause) {
             ShowPauseMenu();
