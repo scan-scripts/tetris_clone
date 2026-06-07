@@ -32,6 +32,7 @@ show next 3 pieces (optional with menu)
 level select in menu
 different randomization
 music
+refactor so gamestate is global
 
 
 */
@@ -175,7 +176,7 @@ void LockCurrentTetromino(GameState *p_gameState) {
         int y = gridPoints[i].y;
 
         // assert(x >= 0 && x < BOARD_WIDTH);
-        assert(y >= 0 && y < BOARD_HEIGHT);
+        // assert(y >= 0 && y < BOARD_HEIGHT);
         // assert(p_gameState->board[y][x] == EMPTY);
 
         if (!(p_gameState->board[y][x] == EMPTY)) {
@@ -252,13 +253,10 @@ int PointsForClear(int clearedLines) {
     return 0;
 }
 
-void LockAndSpawnNextTetromino(GameState *p_gameState) {
-    LockCurrentTetromino(p_gameState);
-
+void UpdateGameStats(GameState *p_gameState) {
     int clearedLines = ClearLines(p_gameState);
     p_gameState->linesCleared += clearedLines;
     float multiplier = 1.0f;
-
     if (clearedLines == 4) {
         if (p_gameState->streak) {
             multiplier = 1.4; // back to back factor check later
@@ -267,9 +265,13 @@ void LockAndSpawnNextTetromino(GameState *p_gameState) {
     } else {
         p_gameState->streak = false;
     }
+    p_gameState->level = p_gameState->linesCleared / 10;
+    p_gameState->score += PointsForClear(clearedLines) * multiplier * p_gameState->level;
+}
 
-    p_gameState->score += PointsForClear(clearedLines) * multiplier;
-
+void LockAndSpawnNextTetromino(GameState *p_gameState) {
+    LockCurrentTetromino(p_gameState);
+    UpdateGameStats(p_gameState);
     SpawnNextTetromino(p_gameState);
 }
 
@@ -370,11 +372,39 @@ void HoldCurrent(GameState *p_gameState) {
     }
 }
 
+void DrawCenteredTextInRec(const char *text, int fontSize, Color color, Rectangle rec) {
+    Vector2 textSize = MeasureTextEx(GetFontDefault(), text, fontSize, fontSize / 10.0f);
+
+    int textX = rec.x + (rec.width / 2.0) - (textSize.x / 2.0);
+    int textY = rec.y + (rec.height / 2.0) - (textSize.y / 2.0);
+    DrawText(text, textX, textY, fontSize, color);
+}
+
+void ShowPauseMenu() {
+    Rectangle rec = {0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2.0, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2.0};
+    DrawRectangleRec(rec, BLUE);
+    DrawCenteredTextInRec("PAUSE", 60, LIGHTGRAY, rec);
+}
+
+void ShowGameOverMenu(GameState gameState) {
+    Rectangle rec = {0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2.0, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2.0};
+    DrawRectangleRec(rec, RED);
+    DrawCenteredTextInRec(
+        TextFormat("GAME OVER\nLines cleared: %i\nScore: %d", gameState.linesCleared, gameState.score), 60, LIGHTGRAY,
+        rec);
+}
+
 void UpdateGame(GameState *p_gameState, float dT) {
     if (IsKeyPressed(KEY_F11)) {
         ToggleFullscreen();
     }
-    if (IsKeyPressed(KEY_C), IsKeyPressed(KEY_H)) {
+    if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_P)) {
+        p_gameState->pause = !p_gameState->pause;
+    }
+    if (p_gameState->pause) {
+        return;
+    }
+    if (IsKeyPressed(KEY_C) || IsKeyPressed(KEY_H)) {
         HoldCurrent(p_gameState);
     }
     if (IsKeyPressed(KEY_UP)) {
@@ -509,12 +539,6 @@ void DrawGame(GameState *p_gameState) {
     DrawText(TextFormat("Lines cleared: %i\nScore: %d ", p_gameState->linesCleared, p_gameState->score), 0, 0, 20, RED);
 }
 
-void ShowGameOverMenu() {
-    DrawRectangle(0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2, DARKGRAY);
-}
-
-void ShowPauseMenu() {}
-
 void InitGameState(GameState *p_gameState) {
     p_gameState->gameOver = false;
     p_gameState->pause = false;
@@ -536,6 +560,8 @@ void InitGameState(GameState *p_gameState) {
 
     p_gameState->softDropTimer = 0.0f;
     p_gameState->softDropInterval = 0.05f;
+
+    p_gameState->level = 1;
 }
 
 int main(void) {
@@ -557,10 +583,10 @@ int main(void) {
     SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
 
     SetTargetFPS(60);
-
+    float dT;
     while (!WindowShouldClose()) {
-        if (!gameState.gameOver && !gameState.pause) {
-            float dT = GetFrameTime();
+        if (!gameState.gameOver) {
+            dT = GetFrameTime();
             UpdateGame(&gameState, dT);
         }
 
@@ -573,7 +599,7 @@ int main(void) {
         BeginTextureMode(target);
         DrawGame(&gameState);
         if (gameState.gameOver) {
-            ShowGameOverMenu();
+            ShowGameOverMenu(gameState);
         }
         if (gameState.pause) {
             ShowPauseMenu();

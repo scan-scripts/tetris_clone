@@ -42,6 +42,7 @@ typedef struct GameState_t {
     float softDropInterval;
     int score;
     int linesCleared;
+    int level;
     bool gameOver;
     bool pause;
     bool streak;
