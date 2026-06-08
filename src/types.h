@@ -33,19 +33,25 @@ typedef struct GameState_t {
     Tetromino current;
     Tetromino next;
     Tetromino hold;
+
     bool alreadyHeld;
+
     float fallTimer;
     float fallInterval;
+
     float moveTimer;
     float moveDelay;
     float moveInterval;
+    float lockDelay;
     float softDropTimer;
+    float lockDelayTimer;
     int score;
     int linesCleared;
     int level;
+    bool streak;
+
     bool gameOver;
     bool pause;
-    bool streak;
 } GameState;
 
 #endif

@@ -217,6 +217,9 @@ void InitGameState() {
     gameState.moveDelay = 0.15f;
     gameState.moveInterval = 0.05f;
 
+    gameState.lockDelayTimer = 0.0f;
+    gameState.lockDelay = 0.5;
+
     gameState.softDropTimer = 0.0f;
 
     gameState.score = 0;
@@ -304,6 +307,7 @@ void UpdateStats() {
     }
     gameState.level = gameState.linesCleared / 10;
     gameState.fallInterval = CalcFallInterval();
+    gameState.lockDelay = gameState.fallInterval / 2;
     gameState.score += PointsForClear(clearedLines) * multiplier * gameState.level;
 }
 
@@ -362,7 +366,9 @@ void DrawCurrentTetromino() {
 
 void StepCurrentTetrominoDown() {
     if (!MoveCurrentTetrominoDown()) {
-        LockAndSpawnNextTetromino();
+        if (gameState.lockDelayTimer > gameState.lockDelay) {
+            LockAndSpawnNextTetromino();
+        }
     }
 }
 
@@ -457,16 +463,19 @@ void UpdateGame(float dT) {
         HoldCurrent();
     }
     if (IsKeyPressed(KEY_UP)) {
-        RotateCurrentTetromino(&gameState);
+        RotateCurrentTetromino();
+        gameState.lockDelayTimer = 0.0f;
     }
 
     int dir = 0;
 
     if (IsKeyDown(KEY_LEFT)) {
         dir = -1;
+        gameState.lockDelayTimer = 0.0f;
     }
     if (IsKeyDown(KEY_RIGHT)) {
         dir = 1;
+        gameState.lockDelayTimer = 0.0f;
     }
 
     // initial press = immediate move
@@ -512,6 +521,7 @@ void UpdateGame(float dT) {
     }
 
     gameState.fallTimer += dT;
+    gameState.lockDelayTimer += dT;
 
     // TODO move the clear lines call into update
 
