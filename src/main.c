@@ -1,13 +1,17 @@
 #include <assert.h>
 #include <math.h>
-// #include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "raylib.h"
 #include "tetromino.h"
 #include "types.h"
-
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define SCOREBOARD_FILE_NAME "../.scoreboard.txt"
+#define SCORE_LINE_BUFFER_LEN 24
 
 #define PLAY_AREA_WIDTH 300
 #define PLAY_AREA_HEIGHT 600
@@ -49,6 +53,107 @@ Color colors[8] = {
 
 // GLOBAL GAME STATE
 GameState gameState = {0};
+ScoreBoard scoreBoard;
+
+void WriteScoreBoardToFile(ScoreBoard *p_scoreBoard) {
+    FILE *p_file = fopen(SCOREBOARD_FILE_NAME, "w");
+    if (p_file == NULL)
+        return;
+    for (int i = 0; i < N_SCORE_ELS; i++) {
+        fprintf(p_file, "%s,%d\n", p_scoreBoard->scores[i].name, p_scoreBoard->scores[i].score);
+    }
+    fclose(p_file);
+}
+
+bool isDigit(char c) { return (c >= '0' && c <= '9'); }
+
+int ReadScoreLine(char *lineBuffer, ScoreElement *p_scoreEl) {
+    char name[4];
+    char scoreString[SCORE_LINE_BUFFER_LEN];
+    int scoreIndex = 0;
+    char delim = ',';
+    bool reading_name = true;
+    char c;
+    for (int i = 0; i < SCORE_LINE_BUFFER_LEN; i++) {
+        c = lineBuffer[i];
+        if (reading_name) {
+            if (c == delim) {
+                reading_name = false;
+                name[i] = '\0';
+                continue;
+            }
+            if (i >= 3) {
+                return -1; // if the name is longer than 3 chars something has gone wrong
+            }
+            name[i] = c;
+        } else {
+            if (isDigit(c)) {
+
+                if (scoreIndex >= SCORE_LINE_BUFFER_LEN - 1) {
+                    return -1;
+                }
+                scoreString[scoreIndex] = c;
+                scoreIndex++;
+                continue;
+            }
+            if (c == '\n' || c == '\0') {
+                if (scoreIndex == 0) {
+                    return -1;
+                }
+                scoreString[scoreIndex] = '\0';
+                strncpy(p_scoreEl->name, name, sizeof(name));
+                p_scoreEl->score = (int)strtol(scoreString, NULL, 10);
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+    }
+    return -1;
+}
+
+int ReadScoreBoardFile(ScoreBoard *p_scoreBoard) {
+    FILE *p_file = fopen(SCOREBOARD_FILE_NAME, "r");
+
+    if (p_file == NULL) {
+        return -1;
+    }
+    char lineBuffer[SCORE_LINE_BUFFER_LEN];
+    for (int i = 0; i < N_SCORE_ELS; i++) {
+        if ((fgets(lineBuffer, sizeof(lineBuffer), p_file) == NULL)) {
+            fclose(p_file);
+            return -1 * (i + 1); // error because we ran out of lines before we read all 6 returns negative of the
+                                 // number of lines read
+        }
+        if (ReadScoreLine(lineBuffer, &(p_scoreBoard->scores[i]))) {
+            fclose(p_file);
+            return -1;
+        }
+    }
+    fclose(p_file);
+    return 0;
+}
+
+int CheckHighScore(ScoreBoard *p_scoreBoard, int score) {
+    for (int i = 0; i < N_SCORE_ELS; i++) {
+        if (score == p_scoreBoard->scores[i].score) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void ScoreBoardToString(ScoreBoard scoreBoard, char *s) {
+    s[0] = '\0';
+    for (int i = 0; i < N_SCORE_ELS; i++) {
+        sprintf(s + strlen(s), "%s: %d\n", scoreBoard.scores[i].name, scoreBoard.scores[i].score);
+    }
+}
+
+void addHighScore(ScoreBoard *p_scoreBoard, int place, char *name, int score) {
+    strncpy(p_scoreBoard->scores[place].name, name, 4);
+    p_scoreBoard->scores[place].score = score;
+}
 
 void GetTetrominoGridPoints(Tetromino tetromino, Point *gridPoints) {
     for (int i = 0; i < 4; i++) {
@@ -229,6 +334,15 @@ void InitGameState() {
     gameState.gameOver = false;
     gameState.pause = false;
     gameState.streak = false;
+}
+
+ScoreBoard InitScoreBoard() {
+    ScoreBoard scoreBoard = {
+        {{"AAA", 10000}, {"BBB", 5000}, {"CCC", 4000}, {"DDD", 3000}, {"EEE", 2000}, {"FFF", 1000}}};
+    if (!ReadScoreBoardFile(&scoreBoard)) {
+        WriteScoreBoardToFile(&scoreBoard);
+    }
+    return scoreBoard;
 }
 
 void SpawnNextTetromino() {
@@ -439,12 +553,13 @@ void ShowPauseMenu() {
 }
 
 void ShowGameOverMenu() {
-    Rectangle rec = {0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2.0, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2.0};
+    Rectangle rec = {0, PLAY_AREA_Y, GAME_SCREEN_WIDTH, PLAY_AREA_HEIGHT};
     DrawRectangleRec(rec, RED);
-    DrawCenteredTextInRec(TextFormat("GAME OVER\nLines cleared: %i\nScore: %d\nlevel = %d\n[Space] to play again",
-                                     gameState.linesCleared, gameState.score, gameState.level),
-                          60, LIGHTGRAY, rec);
-    if (IsKeyPressed(KEY_SPACE)) {
+    char scoreBoardString[64 * 8];
+    ScoreBoardToString(scoreBoard, scoreBoardString);
+    DrawCenteredTextInRec(TextFormat("GAME OVER\n\n%s\n\n\[R] to play again. ", scoreBoardString), 30, LIGHTGRAY, rec);
+
+    if (IsKeyPressed(KEY_R)) {
         InitGameState();
     }
 }
@@ -612,6 +727,7 @@ int main(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(initialWindowWidth, initialWindowHeight, "Tetris");
     InitGameState();
+    scoreBoard = InitScoreBoard();
 
     RenderTexture2D target = LoadRenderTexture(gameScreenWidth, gameScreenHeight);
     SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);

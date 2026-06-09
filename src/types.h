@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
+#define N_SCORE_ELS 6
 
 typedef struct Point_t {
     int x;
@@ -53,5 +54,14 @@ typedef struct GameState_t {
     bool gameOver;
     bool pause;
 } GameState;
+
+typedef struct ScoreElement_t {
+    char name[4];
+    int score;
+} ScoreElement;
+
+typedef struct ScoreBoard_t {
+    ScoreElement scores[N_SCORE_ELS];
+} ScoreBoard;
 
 #endif
