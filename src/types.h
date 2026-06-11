@@ -53,6 +53,7 @@ typedef struct GameState_t {
 
     bool gameOver;
     bool pause;
+    bool scoreAdded;
 } GameState;
 
 typedef struct ScoreElement_t {

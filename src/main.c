@@ -10,7 +10,7 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#define SCOREBOARD_FILE_NAME "../.scoreboard.txt"
+#define SCOREBOARD_FILE_NAME ".scoreboard.txt"
 #define SCORE_LINE_BUFFER_LEN 24
 
 #define PLAY_AREA_WIDTH 300
@@ -27,17 +27,11 @@
 /*
 TODO
 game over logic ( play again)
-look up "lock delay" and implement it
-
-menu
-outlines for all cells (make a function for drawing a cell so we can change the style later)
-show next 3 pieces (optional with menu)
-level select in menu
-different randomization
-music
-refactor so gamestate is global variable
-
-
+now that scoreBoard is global I don't need all the functions to use pointers (I might even want to make it part of the
+game state) menus show next 3 pieces (optional with menu) level select in menu different randomization music refactor so
+gamestate is global variable
+fix lock delay so it still gives you some time even if you have not moved the piece recently
+fix score writting to file
 */
 
 Color colors[8] = {
@@ -55,12 +49,13 @@ Color colors[8] = {
 GameState gameState = {0};
 ScoreBoard scoreBoard;
 
-void WriteScoreBoardToFile(ScoreBoard *p_scoreBoard) {
+void WriteScoreBoardToFile() {
     FILE *p_file = fopen(SCOREBOARD_FILE_NAME, "w");
-    if (p_file == NULL)
+    if (p_file == NULL) {
         return;
+    }
     for (int i = 0; i < N_SCORE_ELS; i++) {
-        fprintf(p_file, "%s,%d\n", p_scoreBoard->scores[i].name, p_scoreBoard->scores[i].score);
+        fprintf(p_file, "%s,%d\n", scoreBoard.scores[i].name, scoreBoard.scores[i].score);
     }
     fclose(p_file);
 }
@@ -112,7 +107,7 @@ int ReadScoreLine(char *lineBuffer, ScoreElement *p_scoreEl) {
     return -1;
 }
 
-int ReadScoreBoardFile(ScoreBoard *p_scoreBoard) {
+int ReadScoreBoardFile() {
     FILE *p_file = fopen(SCOREBOARD_FILE_NAME, "r");
 
     if (p_file == NULL) {
@@ -125,7 +120,7 @@ int ReadScoreBoardFile(ScoreBoard *p_scoreBoard) {
             return -1 * (i + 1); // error because we ran out of lines before we read all 6 returns negative of the
                                  // number of lines read
         }
-        if (ReadScoreLine(lineBuffer, &(p_scoreBoard->scores[i]))) {
+        if (ReadScoreLine(lineBuffer, &(scoreBoard.scores[i]))) {
             fclose(p_file);
             return -1;
         }
@@ -134,25 +129,30 @@ int ReadScoreBoardFile(ScoreBoard *p_scoreBoard) {
     return 0;
 }
 
-int CheckHighScore(ScoreBoard *p_scoreBoard, int score) {
+int CheckHighScore(int score) {
     for (int i = 0; i < N_SCORE_ELS; i++) {
-        if (score == p_scoreBoard->scores[i].score) {
+        if (score > scoreBoard.scores[i].score) {
             return i;
         }
     }
     return -1;
 }
 
-void ScoreBoardToString(ScoreBoard scoreBoard, char *s) {
+void ScoreBoardToString(char *s) {
     s[0] = '\0';
     for (int i = 0; i < N_SCORE_ELS; i++) {
         sprintf(s + strlen(s), "%s: %d\n", scoreBoard.scores[i].name, scoreBoard.scores[i].score);
     }
 }
 
-void addHighScore(ScoreBoard *p_scoreBoard, int place, char *name, int score) {
-    strncpy(p_scoreBoard->scores[place].name, name, 4);
-    p_scoreBoard->scores[place].score = score;
+void addHighScore(int place, char *name, int score) {
+
+    for (int i = N_SCORE_ELS - 1; i > place; i--) {
+        scoreBoard.scores[i] = scoreBoard.scores[i - 1];
+    }
+    strncpy(scoreBoard.scores[place].name, name, 3);
+    scoreBoard.scores[place].name[3] = '\0';
+    scoreBoard.scores[place].score = score;
 }
 
 void GetTetrominoGridPoints(Tetromino tetromino, Point *gridPoints) {
@@ -172,6 +172,7 @@ bool CanPlaceTetromino(Tetromino tetromino) {
     Point gridPoints[4] = {0};
 
     for (int i = 0; i < 4; i++) {
+
         int x = TetrominoShapeTable[tetromino.type][tetromino.rotState][i].x + tetromino.x;
         int y = TetrominoShapeTable[tetromino.type][tetromino.rotState][i].y + tetromino.y;
 
@@ -222,7 +223,7 @@ Point wallKickTranslationTable_I[4][5] = {[UP] = {{0, 0}, {-2, 0}, {1, 0}, {-2, 
                                           [DOWN] = {{0, 0}, {2, 0}, {-1, 0}, {2, 1}, {-1, -2}},
                                           [LEFT] = {{0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1}}};
 
-void RotateCurrentTetromino() {
+bool RotateCurrentTetromino() {
     RotationState oldRotation = gameState.current.rotState;
     int oldX = gameState.current.x;
     int oldY = gameState.current.y;
@@ -242,13 +243,14 @@ void RotateCurrentTetromino() {
         gameState.current.y = oldY + dxy.y;
 
         if (CanPlaceCurrentTetromino()) {
-            return;
+            return true;
         }
     }
 
     gameState.current.rotState = oldRotation;
     gameState.current.x = oldX;
     gameState.current.y = oldY;
+    return false;
 }
 
 bool MoveCurrentTetrominoSide(int dX) {
@@ -334,15 +336,15 @@ void InitGameState() {
     gameState.gameOver = false;
     gameState.pause = false;
     gameState.streak = false;
+    gameState.scoreAdded = false;
 }
 
-ScoreBoard InitScoreBoard() {
-    ScoreBoard scoreBoard = {
-        {{"AAA", 10000}, {"BBB", 5000}, {"CCC", 4000}, {"DDD", 3000}, {"EEE", 2000}, {"FFF", 1000}}};
-    if (!ReadScoreBoardFile(&scoreBoard)) {
-        WriteScoreBoardToFile(&scoreBoard);
+void InitScoreBoard() {
+    scoreBoard = (ScoreBoard){{{"AAA", 100}, {"BBB", 20}, {"CCC", 10}, {"DDD", 3}, {"EEE", 2}, {"FFF", 1}}};
+
+    if (ReadScoreBoardFile() != 0) {
+        WriteScoreBoardToFile();
     }
-    return scoreBoard;
 }
 
 void SpawnNextTetromino() {
@@ -351,6 +353,7 @@ void SpawnNextTetromino() {
     gameState.current.y = 0;
     RandomTetromino(&gameState.next);
     gameState.alreadyHeld = false;
+    gameState.lockDelayTimer = 0.0f;
 }
 
 bool IsRowFull(int row) {
@@ -419,9 +422,11 @@ void UpdateStats() {
     } else {
         gameState.streak = false;
     }
-    gameState.level = gameState.linesCleared / 10;
+    gameState.level = 1 + gameState.linesCleared / 10;
     gameState.fallInterval = CalcFallInterval();
     gameState.lockDelay = gameState.fallInterval / 2;
+    printf("points for clear %d, multiplier: %f , level %d\n ", PointsForClear(clearedLines), multiplier,
+           gameState.level);
     gameState.score += PointsForClear(clearedLines) * multiplier * gameState.level;
 }
 
@@ -479,10 +484,8 @@ void DrawCurrentTetromino() {
 }
 
 void StepCurrentTetrominoDown() {
-    if (!MoveCurrentTetrominoDown()) {
-        if (gameState.lockDelayTimer > gameState.lockDelay) {
-            LockAndSpawnNextTetromino();
-        }
+    if (MoveCurrentTetrominoDown()) {
+        gameState.lockDelayTimer = 0.0f;
     }
 }
 
@@ -556,12 +559,64 @@ void ShowGameOverMenu() {
     Rectangle rec = {0, PLAY_AREA_Y, GAME_SCREEN_WIDTH, PLAY_AREA_HEIGHT};
     DrawRectangleRec(rec, RED);
     char scoreBoardString[64 * 8];
-    ScoreBoardToString(scoreBoard, scoreBoardString);
+    ScoreBoardToString(scoreBoardString);
     DrawCenteredTextInRec(TextFormat("GAME OVER\n\n%s\n\n\[R] to play again. ", scoreBoardString), 30, LIGHTGRAY, rec);
 
     if (IsKeyPressed(KEY_R)) {
         InitGameState();
     }
+}
+
+bool GetUserText(char *nameBuffer, int n) {
+    static int letterCount = 0;
+    // Get char pressed (unicode character) on the queue
+    int key = GetCharPressed();
+
+    // Check if more characters have been pressed on the same frame
+    while (key > 0) {
+        // NOTE: Only allow keys in range [32..125]
+        if ((key >= 32) && (key <= 125) && (letterCount < n) && (char)key != ' ') {
+            nameBuffer[letterCount] = (char)key;
+            nameBuffer[letterCount + 1] = '\0'; // Add null terminator at the end of the string
+            letterCount++;
+        }
+
+        key = GetCharPressed(); // Check next character in the queue
+    }
+
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        letterCount--;
+        if (letterCount < 0)
+            letterCount = 0;
+        nameBuffer[letterCount] = '\0';
+    }
+    if (IsKeyPressed(KEY_ENTER)) {
+        printf("%s\n", nameBuffer);
+        letterCount = 0;
+        return true;
+    }
+    return false;
+}
+
+// returns 0 when the score has been filled in
+bool ShowHighScoreMenu(int score_place) {
+    static char nameBuffer[4] = {0};
+    Rectangle rec = {0, PLAY_AREA_Y, GAME_SCREEN_WIDTH, PLAY_AREA_HEIGHT};
+    bool nameEntered = GetUserText(nameBuffer, 3);
+    DrawRectangleRec(rec, GREEN);
+    DrawCenteredTextInRec(TextFormat("NEW HIGH SCORE \nENTER YOUR INITALs \n   %s", nameBuffer), 30, LIGHTGRAY, rec);
+    if (nameEntered) {
+        addHighScore(score_place, nameBuffer, gameState.score);
+        return true;
+    }
+    return false;
+}
+
+bool IsPieceGrounded() {
+    Tetromino test = gameState.current;
+    test.y += 1;
+
+    return !CanPlaceTetromino(test);
 }
 
 void UpdateGame(float dT) {
@@ -578,25 +633,26 @@ void UpdateGame(float dT) {
         HoldCurrent();
     }
     if (IsKeyPressed(KEY_UP)) {
-        RotateCurrentTetromino();
-        gameState.lockDelayTimer = 0.0f;
+        if (RotateCurrentTetromino()) {
+            gameState.lockDelayTimer = 0.0f;
+        }
     }
 
     int dir = 0;
 
     if (IsKeyDown(KEY_LEFT)) {
         dir = -1;
-        gameState.lockDelayTimer = 0.0f;
     }
     if (IsKeyDown(KEY_RIGHT)) {
         dir = 1;
-        gameState.lockDelayTimer = 0.0f;
     }
 
     // initial press = immediate move
     if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
-        MoveCurrentTetrominoSide(dir);
-        gameState.moveTimer = 0.0f;
+        if (MoveCurrentTetrominoSide(dir)) {
+            gameState.moveTimer = 0.0f;
+            gameState.lockDelayTimer = 0.0f;
+        }
     }
 
     // held movement
@@ -604,7 +660,9 @@ void UpdateGame(float dT) {
         gameState.moveTimer += dT;
 
         if (gameState.moveTimer >= gameState.moveDelay) {
-            MoveCurrentTetrominoSide(dir);
+            if (MoveCurrentTetrominoSide(dir)) {
+                gameState.lockDelayTimer = 0.0f;
+            }
 
             // switch to repeat interval after delay
             gameState.moveTimer = gameState.moveDelay - gameState.moveInterval;
@@ -636,9 +694,17 @@ void UpdateGame(float dT) {
     }
 
     gameState.fallTimer += dT;
-    gameState.lockDelayTimer += dT;
 
-    // TODO move the clear lines call into update
+    if (IsPieceGrounded()) {
+        gameState.lockDelayTimer += dT;
+
+        if (gameState.lockDelayTimer >= gameState.lockDelay) {
+            LockAndSpawnNextTetromino();
+            return;
+        }
+    } else {
+        gameState.lockDelayTimer = 0.0f;
+    }
 
     if (gameState.fallTimer >= gameState.fallInterval) {
         StepCurrentTetrominoDown();
@@ -726,8 +792,9 @@ int main(void) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(initialWindowWidth, initialWindowHeight, "Tetris");
+
     InitGameState();
-    scoreBoard = InitScoreBoard();
+    InitScoreBoard();
 
     RenderTexture2D target = LoadRenderTexture(gameScreenWidth, gameScreenHeight);
     SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
@@ -749,7 +816,14 @@ int main(void) {
         BeginTextureMode(target);
         DrawGame();
         if (gameState.gameOver) {
-            ShowGameOverMenu();
+            int score_place = CheckHighScore(gameState.score);
+            if (score_place >= 0 && !gameState.scoreAdded) {
+                gameState.scoreAdded = ShowHighScoreMenu(score_place);
+            } else {
+                gameState.scoreAdded = true;
+                WriteScoreBoardToFile();
+                ShowGameOverMenu();
+            }
         }
         if (gameState.pause) {
             ShowPauseMenu();

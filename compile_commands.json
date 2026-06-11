@@ -1,32 +1,32 @@
 [
   {
-    "file": "src/main.c",
+    "file": "/home/liams/projects/tetris_clone/src/main.c",
     "arguments": [
       "/usr/bin/gcc",
-      "src/main.c",
+      "/home/liams/projects/tetris_clone/src/main.c",
       "-o",
       "build/tetris",
       "-Wall",
       "-Wextra",
       "-std=c99",
-      "-Isrc",
-      "-Ilibs/raylib/src"
+      "-I/home/liams/projects/tetris_clone/src",
+      "-isystem", "/home/liams/projects/tetris_clone/libs/raylib/src"
     ],
     "directory": "/home/liams/projects/tetris_clone",
     "output": "build/tetris"
   },
   {
-    "file": "src/tetromino.c",
+    "file": "/home/liams/projects/tetris_clone/src/tetromino.c",
     "arguments": [
       "/usr/bin/gcc",
-      "src/tetromino.c",
+      "/home/liams/projects/tetris_clone/src/tetromino.c",
       "-o",
       "build/tetris",
       "-Wall",
       "-Wextra",
       "-std=c99",
-      "-Isrc",
-      "-Ilibs/raylib/src"
+      "-I/home/liams/projects/tetris_clone/src",
+      "-isystem", "/home/liams/projects/tetris_clone/libs/raylib/src"
     ],
     "directory": "/home/liams/projects/tetris_clone",
     "output": "build/tetris"
