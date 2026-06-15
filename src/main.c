@@ -32,6 +32,10 @@ game state) menus show next 3 pieces (optional with menu) level select in menu d
 gamestate is global variable
 fix lock delay so it still gives you some time even if you have not moved the piece recently
 fix score writting to file
+setup consistant menu system for settings and the main menu. settings would then branch into things like audo menu and
+game modes and level select
+
+
 */
 
 Color colors[8] = {
@@ -299,6 +303,12 @@ void RandomTetromino(Tetromino *p_tetromino) {
     p_tetromino->rotState = UP;
 }
 
+void SwapTetrominos(Tetromino *t1, Tetromino *t2) {
+    Tetromino temp = *t1;
+    *t1 = *t2;
+    *t2 = temp;
+}
+
 void ClearBoard() {
     for (int i = 0; i < BOARD_HEIGHT; i++) {
         for (int j = 0; j < BOARD_WIDTH; j++) {
@@ -537,8 +547,8 @@ void HoldCurrent() {
             gameState.current.y = 0;
             gameState.current.rotState = UP;
         }
-        gameState.alreadyHeld = true;
     }
+    gameState.alreadyHeld = true;
 }
 
 void DrawCenteredTextInRec(const char *text, int fontSize, Color color, Rectangle rec) {
@@ -549,10 +559,68 @@ void DrawCenteredTextInRec(const char *text, int fontSize, Color color, Rectangl
     DrawText(text, textX, textY, fontSize, color);
 }
 
+void DrawSellectMenu(char **options, int selectedIndex, int optionCount, Rectangle rec, float fontSize,
+                     Color selectColor, Color textColor) {
+    /// this should print out the options stacked on top of eachother with the option in the selected index with a box
+    /// around it
+
+    int textX;
+    int textY;
+    int yOffset = 0;
+    Vector2 textSize;
+    float spacing = fontSize / 10.0f;
+    char text[64];
+    Rectangle selectRec;
+
+    for (int i = 0; i < optionCount; i++) {
+        strncpy(text, options[i], 64);
+        textSize = MeasureTextEx(GetFontDefault(), text, fontSize, spacing);
+        textX = rec.x + (rec.width / 2.0) - (textSize.x / 2.0);
+        textY = rec.y + (textSize.y / 2.0) + yOffset;
+        yOffset += (textSize.y);
+        DrawText(text, textX, textY, fontSize, textColor);
+        if (i == selectedIndex) {
+            selectRec = (Rectangle){textX - 5, textY - 2, textSize.x + 10, textSize.y + 4};
+            DrawRectangleLinesEx(selectRec, 5.0f, selectColor);
+        }
+    }
+}
+
+char *pauseMenuStrings[] = {"RESUME", " RESTART", "MAIN MENU"};
+
+// TODO : add a main menu
+// TODO :  fix the rectangles around the selected text
+
 void ShowPauseMenu() {
+    static PauseMenuState state;
+    if (gameState.resetPause) {
+        gameState.resetPause = false;
+    }
     Rectangle rec = {0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2.0, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2.0};
     DrawRectangleRec(rec, YELLOW);
-    DrawCenteredTextInRec("PAUSE", 60, LIGHTGRAY, rec);
+
+    if (IsKeyPressed(KEY_DOWN)) {
+        state = (state + 1) % PAUSE_MENU_COUNT;
+    }
+    if (IsKeyPressed(KEY_UP)) {
+        state = (state + PAUSE_MENU_COUNT - 1) % PAUSE_MENU_COUNT;
+    }
+    if (IsKeyPressed(KEY_ENTER)) {
+        if (state == RESUME) {
+            gameState.pause = false;
+            return;
+        }
+        if (state == RESTART) {
+            InitGameState();
+            return;
+        }
+        if (state == MAIN_MENU) {
+            gameState.mainMenu = true;
+        }
+    }
+
+    DrawSellectMenu(pauseMenuStrings, state, 3, rec, 60, LIGHTGRAY, LIGHTGRAY);
+    // DrawCenteredTextInRec("PAUSE", 60, LIGHTGRAY, rec);
 }
 
 void ShowGameOverMenu() {
@@ -604,9 +672,11 @@ bool ShowHighScoreMenu(int score_place) {
     Rectangle rec = {0, PLAY_AREA_Y, GAME_SCREEN_WIDTH, PLAY_AREA_HEIGHT};
     bool nameEntered = GetUserText(nameBuffer, 3);
     DrawRectangleRec(rec, GREEN);
-    DrawCenteredTextInRec(TextFormat("NEW HIGH SCORE \nENTER YOUR INITALs \n   %s", nameBuffer), 30, LIGHTGRAY, rec);
+    DrawCenteredTextInRec(TextFormat("NEW HIGH SCORE \nENTER YOUR INITALs \n   %s", nameBuffer), 30, BROWN, rec);
     if (nameEntered) {
         addHighScore(score_place, nameBuffer, gameState.score);
+        WriteScoreBoardToFile();
+        gameState.scoreAdded = true;
         return true;
     }
     return false;
@@ -625,6 +695,7 @@ void UpdateGame(float dT) {
     }
     if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_P)) {
         gameState.pause = !gameState.pause;
+        gameState.resetPause = true;
     }
     if (gameState.pause) {
         return;
@@ -745,14 +816,17 @@ void DrawTetrominoInBox(Tetromino tetromino, int x, int y) {
 
     float xOffset = (boxWidth - shapeWidth) / 2.0f;
     float yOffset = (boxHeight - shapeHeight) / 2.0f;
+    if (tetromino.type != EMPTY) {
+        for (int i = 0; i < 4; i++) {
+            Point pos = TetrominoShapeTable[tetromino.type][UP][i];
 
-    for (int i = 0; i < 4; i++) {
-        Point pos = TetrominoShapeTable[tetromino.type][UP][i];
+            float cellX = x + (float)(pos.x - xMin) * CELL_WIDTH + xOffset;
+            float cellY = y + (float)(pos.y - yMin) * CELL_HEIGHT + yOffset;
 
-        float cellX = x + (float)(pos.x - xMin) * CELL_WIDTH + xOffset;
-        float cellY = y + (float)(pos.y - yMin) * CELL_HEIGHT + yOffset;
-
-        DrawRectangle(cellX, cellY, CELL_WIDTH, CELL_HEIGHT, colors[tetromino.type]);
+            DrawRectangle(cellX, cellY, CELL_WIDTH, CELL_HEIGHT, colors[tetromino.type]);
+            DrawRectangleLinesEx((Rectangle){(float)cellX, (float)cellY, (float)CELL_WIDTH, (float)CELL_HEIGHT}, 4,
+                                 WHITE);
+        }
     }
 }
 
@@ -820,8 +894,6 @@ int main(void) {
             if (score_place >= 0 && !gameState.scoreAdded) {
                 gameState.scoreAdded = ShowHighScoreMenu(score_place);
             } else {
-                gameState.scoreAdded = true;
-                WriteScoreBoardToFile();
                 ShowGameOverMenu();
             }
         }

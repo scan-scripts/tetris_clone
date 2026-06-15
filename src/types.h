@@ -1,6 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "menus.h"
 #include <stdbool.h>
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
@@ -22,12 +23,7 @@ typedef struct Tetromino_t {
     int y;
 } Tetromino;
 
-// typedef struct Tetromino_t_{
-//    TetrominoType type;
-//    int x;
-//    int y;
-// }Tetromino_;
-//
+typedef enum SoundStyle_t { CLASSIC, SILLY } SoundStyle;
 
 typedef struct GameState_t {
     TetrominoType board[BOARD_HEIGHT][BOARD_WIDTH];
@@ -53,7 +49,16 @@ typedef struct GameState_t {
 
     bool gameOver;
     bool pause;
+    bool mainMenu;
+    bool resetPause;
     bool scoreAdded;
+
+    MenuStack menuStack;
+
+    int musicVolume;
+    int sfxVolume;
+    SoundStyle musicStyle;
+    SoundStyle sfxStyle;
 } GameState;
 
 typedef struct ScoreElement_t {
@@ -64,5 +69,7 @@ typedef struct ScoreElement_t {
 typedef struct ScoreBoard_t {
     ScoreElement scores[N_SCORE_ELS];
 } ScoreBoard;
+
+typedef enum PauseMenuState_t { RESUME, RESTART, MAIN_MENU, PAUSE_MENU_COUNT } PauseMenuState;
 
 #endif
