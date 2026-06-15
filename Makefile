@@ -3,7 +3,7 @@ CC := gcc
 APP := tetris
 BUILD_DIR := build
 
-SRC := src/main.c src/tetromino.c
+SRC := src/main.c src/tetromino.c src/scoreboard.c src/menus.c src/tetris_menus.c
 
 RAYLIB_DIR := libs/raylib
 RAYLIB_SRC := $(RAYLIB_DIR)/src

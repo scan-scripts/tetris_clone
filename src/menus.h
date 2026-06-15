@@ -9,6 +9,7 @@
 #define ITEM_SUB(label, p_menu) {.name = (label), .type = MENU_ACTION, .action.subMenu = (p_menu)}
 #define ITEM_SLIDER(label, p_slider) {.name = (label), .type = SLIDER_ACTION, .action.slider = (p_slider)}
 #define ITEM_TOGGLE(label, p_toggle) {.name = (label), .type = TOGGLE_ACTION, .action.toggle = (p_toggle)}
+#define ITEM_BACK(label) {.name = (label), .type = BACK_ACTION}
 
 #define DEFINE_MENU(var, ttl, menu_items)                                                                              \
     Menu var = {                                                                                                       \
@@ -69,17 +70,14 @@ typedef struct MenuStack_t {
 } MenuStack;
 
 void MenuStackPush(MenuStack *ms, Menu *menu);
-
 void MenuStackPop(MenuStack *ms);
-
 Menu *MenuStackTop(MenuStack *ms);
+
 void IncrementSlider(MenuSlider *slider);
-
 void DecrementSlider(MenuSlider *slider);
-
 void SetSlider(MenuSlider *slider, int value);
-void ToggleCycleForward(MenuToggle *toggle);
 
+void ToggleCycleForward(MenuToggle *toggle);
 void ToggleCycleBackward(MenuToggle *toggle);
 
 #endif

@@ -25,6 +25,15 @@ typedef struct Tetromino_t {
 
 typedef enum SoundStyle_t { CLASSIC, SILLY } SoundStyle;
 
+typedef struct ScoreElement_t {
+    char name[4];
+    int score;
+} ScoreElement;
+
+typedef struct ScoreBoard_t {
+    ScoreElement scores[N_SCORE_ELS];
+} ScoreBoard;
+
 typedef struct GameState_t {
     TetrominoType board[BOARD_HEIGHT][BOARD_WIDTH];
     Tetromino current;
@@ -53,6 +62,7 @@ typedef struct GameState_t {
     bool resetPause;
     bool scoreAdded;
 
+    ScoreBoard scoreBoard;
     MenuStack menuStack;
 
     int musicVolume;
@@ -60,15 +70,6 @@ typedef struct GameState_t {
     SoundStyle musicStyle;
     SoundStyle sfxStyle;
 } GameState;
-
-typedef struct ScoreElement_t {
-    char name[4];
-    int score;
-} ScoreElement;
-
-typedef struct ScoreBoard_t {
-    ScoreElement scores[N_SCORE_ELS];
-} ScoreBoard;
 
 typedef enum PauseMenuState_t { RESUME, RESTART, MAIN_MENU, PAUSE_MENU_COUNT } PauseMenuState;
 

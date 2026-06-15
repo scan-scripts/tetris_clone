@@ -5,13 +5,11 @@
 #include <string.h>
 
 #include "raylib.h"
+#include "scoreboard.h"
 #include "tetromino.h"
 #include "types.h"
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-#define SCOREBOARD_FILE_NAME ".scoreboard.txt"
-#define SCORE_LINE_BUFFER_LEN 24
 
 #define PLAY_AREA_WIDTH 300
 #define PLAY_AREA_HEIGHT 600
@@ -51,113 +49,11 @@ Color colors[8] = {
 
 // GLOBAL GAME STATE
 GameState gameState = {0};
-ScoreBoard scoreBoard;
 
-void WriteScoreBoardToFile() {
-    FILE *p_file = fopen(SCOREBOARD_FILE_NAME, "w");
-    if (p_file == NULL) {
-        return;
-    }
-    for (int i = 0; i < N_SCORE_ELS; i++) {
-        fprintf(p_file, "%s,%d\n", scoreBoard.scores[i].name, scoreBoard.scores[i].score);
-    }
-    fclose(p_file);
-}
-
-bool isDigit(char c) { return (c >= '0' && c <= '9'); }
-
-int ReadScoreLine(char *lineBuffer, ScoreElement *p_scoreEl) {
-    char name[4];
-    char scoreString[SCORE_LINE_BUFFER_LEN];
-    int scoreIndex = 0;
-    char delim = ',';
-    bool reading_name = true;
-    char c;
-    for (int i = 0; i < SCORE_LINE_BUFFER_LEN; i++) {
-        c = lineBuffer[i];
-        if (reading_name) {
-            if (c == delim) {
-                reading_name = false;
-                name[i] = '\0';
-                continue;
-            }
-            if (i >= 3) {
-                return -1; // if the name is longer than 3 chars something has gone wrong
-            }
-            name[i] = c;
-        } else {
-            if (isDigit(c)) {
-
-                if (scoreIndex >= SCORE_LINE_BUFFER_LEN - 1) {
-                    return -1;
-                }
-                scoreString[scoreIndex] = c;
-                scoreIndex++;
-                continue;
-            }
-            if (c == '\n' || c == '\0') {
-                if (scoreIndex == 0) {
-                    return -1;
-                }
-                scoreString[scoreIndex] = '\0';
-                strncpy(p_scoreEl->name, name, sizeof(name));
-                p_scoreEl->score = (int)strtol(scoreString, NULL, 10);
-                return 0;
-            } else {
-                return -1;
-            }
-        }
-    }
-    return -1;
-}
-
-int ReadScoreBoardFile() {
-    FILE *p_file = fopen(SCOREBOARD_FILE_NAME, "r");
-
-    if (p_file == NULL) {
-        return -1;
-    }
-    char lineBuffer[SCORE_LINE_BUFFER_LEN];
-    for (int i = 0; i < N_SCORE_ELS; i++) {
-        if ((fgets(lineBuffer, sizeof(lineBuffer), p_file) == NULL)) {
-            fclose(p_file);
-            return -1 * (i + 1); // error because we ran out of lines before we read all 6 returns negative of the
-                                 // number of lines read
-        }
-        if (ReadScoreLine(lineBuffer, &(scoreBoard.scores[i]))) {
-            fclose(p_file);
-            return -1;
-        }
-    }
-    fclose(p_file);
-    return 0;
-}
-
-int CheckHighScore(int score) {
-    for (int i = 0; i < N_SCORE_ELS; i++) {
-        if (score > scoreBoard.scores[i].score) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-void ScoreBoardToString(char *s) {
-    s[0] = '\0';
-    for (int i = 0; i < N_SCORE_ELS; i++) {
-        sprintf(s + strlen(s), "%s: %d\n", scoreBoard.scores[i].name, scoreBoard.scores[i].score);
-    }
-}
-
-void addHighScore(int place, char *name, int score) {
-
-    for (int i = N_SCORE_ELS - 1; i > place; i--) {
-        scoreBoard.scores[i] = scoreBoard.scores[i - 1];
-    }
-    strncpy(scoreBoard.scores[place].name, name, 3);
-    scoreBoard.scores[place].name[3] = '\0';
-    scoreBoard.scores[place].score = score;
-}
+void StartGame(void) {}
+void QuitGame(void) {}
+void ResumeFromPause(void) {}
+void GoToMainMenu(void) {}
 
 void GetTetrominoGridPoints(Tetromino tetromino, Point *gridPoints) {
     for (int i = 0; i < 4; i++) {
@@ -349,14 +245,6 @@ void InitGameState() {
     gameState.scoreAdded = false;
 }
 
-void InitScoreBoard() {
-    scoreBoard = (ScoreBoard){{{"AAA", 100}, {"BBB", 20}, {"CCC", 10}, {"DDD", 3}, {"EEE", 2}, {"FFF", 1}}};
-
-    if (ReadScoreBoardFile() != 0) {
-        WriteScoreBoardToFile();
-    }
-}
-
 void SpawnNextTetromino() {
     gameState.current = gameState.next;
     gameState.current.x = 4;
@@ -372,7 +260,6 @@ bool IsRowFull(int row) {
             return false;
         }
     }
-
     return true;
 }
 
@@ -517,7 +404,6 @@ Tetromino GetShadowTetromino() {
 
     while (true) {
         shadow.y++;
-
         if (!CanPlaceTetromino(shadow)) {
             shadow.y--;
             break;
@@ -633,53 +519,6 @@ void ShowGameOverMenu() {
     if (IsKeyPressed(KEY_R)) {
         InitGameState();
     }
-}
-
-bool GetUserText(char *nameBuffer, int n) {
-    static int letterCount = 0;
-    // Get char pressed (unicode character) on the queue
-    int key = GetCharPressed();
-
-    // Check if more characters have been pressed on the same frame
-    while (key > 0) {
-        // NOTE: Only allow keys in range [32..125]
-        if ((key >= 32) && (key <= 125) && (letterCount < n) && (char)key != ' ') {
-            nameBuffer[letterCount] = (char)key;
-            nameBuffer[letterCount + 1] = '\0'; // Add null terminator at the end of the string
-            letterCount++;
-        }
-
-        key = GetCharPressed(); // Check next character in the queue
-    }
-
-    if (IsKeyPressed(KEY_BACKSPACE)) {
-        letterCount--;
-        if (letterCount < 0)
-            letterCount = 0;
-        nameBuffer[letterCount] = '\0';
-    }
-    if (IsKeyPressed(KEY_ENTER)) {
-        printf("%s\n", nameBuffer);
-        letterCount = 0;
-        return true;
-    }
-    return false;
-}
-
-// returns 0 when the score has been filled in
-bool ShowHighScoreMenu(int score_place) {
-    static char nameBuffer[4] = {0};
-    Rectangle rec = {0, PLAY_AREA_Y, GAME_SCREEN_WIDTH, PLAY_AREA_HEIGHT};
-    bool nameEntered = GetUserText(nameBuffer, 3);
-    DrawRectangleRec(rec, GREEN);
-    DrawCenteredTextInRec(TextFormat("NEW HIGH SCORE \nENTER YOUR INITALs \n   %s", nameBuffer), 30, BROWN, rec);
-    if (nameEntered) {
-        addHighScore(score_place, nameBuffer, gameState.score);
-        WriteScoreBoardToFile();
-        gameState.scoreAdded = true;
-        return true;
-    }
-    return false;
 }
 
 bool IsPieceGrounded() {

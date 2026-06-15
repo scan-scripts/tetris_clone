@@ -3,7 +3,6 @@
 #include "raylib.h"
 
 extern GameState gameState;
-extern ScoreBoard scoreBoard;
 
 void UpdateMenu(MenuStack *ms) {
     Menu *currentMenu = MenuStackTop(ms);
@@ -65,14 +64,14 @@ void ShowScoreBoard(void) {}
 
 MenuItem mainItems[] = {
     ITEM_FUNC("Start", StartGame),
-    ITEM_SUB("Settings", &SettingsMenu),
+    ITEM_SUB("Settings", &settingsMenu),
     ITEM_FUNC("ScoreBoard", ShowScoreBoard),
     ITEM_FUNC("Quit", QuitGame),
 };
 
 DEFINE_MENU(MainMenu, "TETRIS", mainItems);
 
-MenuItem settingsItems[] = {ITEM_SUB("Sound", &SoundMenu), ITEM_SUB("Style", &StyleMenu), ITEM_FUNC("Back", LastMenu)};
+MenuItem settingsItems[] = {ITEM_SUB("Sound", &soundMenu), ITEM_SUB("Style", &styleMenu), ITEM_BACK("Back")};
 DEFINE_MENU(settingsMenu, "SETTINGS", settingsItems);
 
 DEFINE_SLIDER(musicSlider, 50, 0, 100, 1, &gameState.musicVolume);
@@ -87,10 +86,11 @@ MenuItem soundItems[] = {
     ITEM_TOGGLE("Music Style", &musicStyleToggle),
     ITEM_SLIDER("SFX Volume", &sfxSlider),
     ITEM_TOGGLE("SFX Style", &sfxStyleToggle),
-    ITEM_FUNC("Back", LastMenu),
+    ITEM_BACK("Back"),
 };
-DEFINE_MENU(SoundMenu, "SOUND", soundItems);
-Menu StyleMenu = {0};
+
+DEFINE_MENU(soundMenu, "SOUND", soundItems);
+Menu styleMenu = {0};
 
 MenuItem pauseMenuItems[] = {ITEM_FUNC("Resume", ResumeFromPause), ITEM_FUNC("Restart", InitGameState),
                              ITEM_SUB("Settings", &settingsMenu), ITEM_FUNC("Main Menu", GoToMainMenu)};
