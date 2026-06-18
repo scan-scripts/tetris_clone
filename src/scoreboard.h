@@ -10,6 +10,5 @@ void WriteScoreBoardToFile(void);
 int CheckHighScore(int score);
 void ScoreBoardToString(char *s);
 void addHighScore(int place, char *name, int score);
-bool ShowHighScoreMenu(int score_place);
 
 #endif

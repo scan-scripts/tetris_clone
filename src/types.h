@@ -59,7 +59,6 @@ typedef struct GameState_t {
     bool gameOver;
     bool pause;
     bool mainMenu;
-    bool resetPause;
     bool scoreAdded;
 
     ScoreBoard scoreBoard;
@@ -71,6 +70,5 @@ typedef struct GameState_t {
     SoundStyle sfxStyle;
 } GameState;
 
-typedef enum PauseMenuState_t { RESUME, RESTART, MAIN_MENU, PAUSE_MENU_COUNT } PauseMenuState;
 
 #endif

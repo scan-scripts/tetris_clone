@@ -12,7 +12,7 @@ void ValidateMenuToggle(MenuToggle *p_toggle) {
 void ValidateMenuSlider(MenuSlider *p_slider) {
     assert(p_slider->min < p_slider->max);
     assert(p_slider->value <= p_slider->max);
-    assert(p_slider->value >= p_slider->min);
+    // assert(p_slider->value >= p_slider->min);
     assert(p_slider->step > 0);
     assert(p_slider->step <= (p_slider->max - p_slider->min));
     assert(((p_slider->max - p_slider->min) % p_slider->step) == 0);

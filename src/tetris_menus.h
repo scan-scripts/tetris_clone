@@ -20,5 +20,12 @@ void GoToMainMenu(void);
 // from tetris_menus.c
 void DrawMenu(Menu menu, Rectangle rec);
 void ShowScoreBoard(void);
-
+void UpdateMenu();
+extern Menu mainMenu;
+extern Menu pauseMenu;
+extern Menu scoreboardMenu;
+extern Menu gameOverMenu;
+void PushScoreboardMenu(void);
+void PushGameOverMenu(void);
+void PushNameEntryMenu(int place);
 #endif

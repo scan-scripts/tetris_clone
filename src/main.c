@@ -6,6 +6,7 @@
 
 #include "raylib.h"
 #include "scoreboard.h"
+#include "tetris_menus.h"
 #include "tetromino.h"
 #include "types.h"
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -50,10 +51,21 @@ Color colors[8] = {
 // GLOBAL GAME STATE
 GameState gameState = {0};
 
-void StartGame(void) {}
-void QuitGame(void) {}
-void ResumeFromPause(void) {}
-void GoToMainMenu(void) {}
+void StartGame(void) {
+    InitGameState();
+    gameState.mainMenu = false;
+}
+void QuitGame(void) { CloseWindow(); }
+void ResumeFromPause(void) {
+    gameState.pause = false;
+    MenuStackPop(&gameState.menuStack);
+}
+void GoToMainMenu(void) {
+    gameState.pause = false;
+    gameState.mainMenu = true;
+    gameState.menuStack.stack[0] = &mainMenu;
+    gameState.menuStack.depth = 0;
+}
 
 void GetTetrominoGridPoints(Tetromino tetromino, Point *gridPoints) {
     for (int i = 0; i < 4; i++) {
@@ -243,6 +255,8 @@ void InitGameState() {
     gameState.pause = false;
     gameState.streak = false;
     gameState.scoreAdded = false;
+    InitScoreBoard();
+    gameState.menuStack.depth = -1;
 }
 
 void SpawnNextTetromino() {
@@ -322,8 +336,6 @@ void UpdateStats() {
     gameState.level = 1 + gameState.linesCleared / 10;
     gameState.fallInterval = CalcFallInterval();
     gameState.lockDelay = gameState.fallInterval / 2;
-    printf("points for clear %d, multiplier: %f , level %d\n ", PointsForClear(clearedLines), multiplier,
-           gameState.level);
     gameState.score += PointsForClear(clearedLines) * multiplier * gameState.level;
 }
 
@@ -437,90 +449,6 @@ void HoldCurrent() {
     gameState.alreadyHeld = true;
 }
 
-void DrawCenteredTextInRec(const char *text, int fontSize, Color color, Rectangle rec) {
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), text, fontSize, fontSize / 10.0f);
-
-    int textX = rec.x + (rec.width / 2.0) - (textSize.x / 2.0);
-    int textY = rec.y + (rec.height / 2.0) - (textSize.y / 2.0);
-    DrawText(text, textX, textY, fontSize, color);
-}
-
-void DrawSellectMenu(char **options, int selectedIndex, int optionCount, Rectangle rec, float fontSize,
-                     Color selectColor, Color textColor) {
-    /// this should print out the options stacked on top of eachother with the option in the selected index with a box
-    /// around it
-
-    int textX;
-    int textY;
-    int yOffset = 0;
-    Vector2 textSize;
-    float spacing = fontSize / 10.0f;
-    char text[64];
-    Rectangle selectRec;
-
-    for (int i = 0; i < optionCount; i++) {
-        strncpy(text, options[i], 64);
-        textSize = MeasureTextEx(GetFontDefault(), text, fontSize, spacing);
-        textX = rec.x + (rec.width / 2.0) - (textSize.x / 2.0);
-        textY = rec.y + (textSize.y / 2.0) + yOffset;
-        yOffset += (textSize.y);
-        DrawText(text, textX, textY, fontSize, textColor);
-        if (i == selectedIndex) {
-            selectRec = (Rectangle){textX - 5, textY - 2, textSize.x + 10, textSize.y + 4};
-            DrawRectangleLinesEx(selectRec, 5.0f, selectColor);
-        }
-    }
-}
-
-char *pauseMenuStrings[] = {"RESUME", " RESTART", "MAIN MENU"};
-
-// TODO : add a main menu
-// TODO :  fix the rectangles around the selected text
-
-void ShowPauseMenu() {
-    static PauseMenuState state;
-    if (gameState.resetPause) {
-        gameState.resetPause = false;
-    }
-    Rectangle rec = {0, PLAY_AREA_Y + PLAY_AREA_WIDTH / 2.0, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT / 2.0};
-    DrawRectangleRec(rec, YELLOW);
-
-    if (IsKeyPressed(KEY_DOWN)) {
-        state = (state + 1) % PAUSE_MENU_COUNT;
-    }
-    if (IsKeyPressed(KEY_UP)) {
-        state = (state + PAUSE_MENU_COUNT - 1) % PAUSE_MENU_COUNT;
-    }
-    if (IsKeyPressed(KEY_ENTER)) {
-        if (state == RESUME) {
-            gameState.pause = false;
-            return;
-        }
-        if (state == RESTART) {
-            InitGameState();
-            return;
-        }
-        if (state == MAIN_MENU) {
-            gameState.mainMenu = true;
-        }
-    }
-
-    DrawSellectMenu(pauseMenuStrings, state, 3, rec, 60, LIGHTGRAY, LIGHTGRAY);
-    // DrawCenteredTextInRec("PAUSE", 60, LIGHTGRAY, rec);
-}
-
-void ShowGameOverMenu() {
-    Rectangle rec = {0, PLAY_AREA_Y, GAME_SCREEN_WIDTH, PLAY_AREA_HEIGHT};
-    DrawRectangleRec(rec, RED);
-    char scoreBoardString[64 * 8];
-    ScoreBoardToString(scoreBoardString);
-    DrawCenteredTextInRec(TextFormat("GAME OVER\n\n%s\n\n\[R] to play again. ", scoreBoardString), 30, LIGHTGRAY, rec);
-
-    if (IsKeyPressed(KEY_R)) {
-        InitGameState();
-    }
-}
-
 bool IsPieceGrounded() {
     Tetromino test = gameState.current;
     test.y += 1;
@@ -533,8 +461,9 @@ void UpdateGame(float dT) {
         ToggleFullscreen();
     }
     if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_P)) {
-        gameState.pause = !gameState.pause;
-        gameState.resetPause = true;
+        gameState.pause = true;
+        MenuStackPush(&gameState.menuStack, &pauseMenu);
+        return;
     }
     if (gameState.pause) {
         return;
@@ -707,7 +636,9 @@ int main(void) {
     InitWindow(initialWindowWidth, initialWindowHeight, "Tetris");
 
     InitGameState();
-    InitScoreBoard();
+    gameState.mainMenu = true;
+    gameState.menuStack.stack[0] = &mainMenu;
+    gameState.menuStack.depth = 0;
 
     RenderTexture2D target = LoadRenderTexture(gameScreenWidth, gameScreenHeight);
     SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
@@ -715,10 +646,7 @@ int main(void) {
     SetTargetFPS(60);
     float dT;
     while (!WindowShouldClose()) {
-        if (!gameState.gameOver) {
-            dT = GetFrameTime();
-            UpdateGame(dT);
-        }
+        dT = GetFrameTime();
 
         float scale = MIN((float)GetScreenWidth() / gameScreenWidth, (float)GetScreenHeight() / gameScreenHeight);
         Rectangle source = {0.0f, 0.0f, (float)target.texture.width, (float)-target.texture.height};
@@ -727,17 +655,43 @@ int main(void) {
                           gameScreenHeight * scale};
 
         BeginTextureMode(target);
-        DrawGame();
-        if (gameState.gameOver) {
-            int score_place = CheckHighScore(gameState.score);
-            if (score_place >= 0 && !gameState.scoreAdded) {
-                gameState.scoreAdded = ShowHighScoreMenu(score_place);
-            } else {
-                ShowGameOverMenu();
+        if (gameState.mainMenu) {
+            ClearBackground(BLACK);
+            UpdateMenu();
+            Menu *currentMenu = MenuStackTop(&gameState.menuStack);
+            if (currentMenu) {
+                DrawMenu(*currentMenu, (Rectangle){0, 0, gameScreenWidth, gameScreenHeight});
             }
-        }
-        if (gameState.pause) {
-            ShowPauseMenu();
+        } else {
+            if (!gameState.gameOver) {
+                UpdateGame(dT);
+            }
+            DrawGame();
+            if (gameState.gameOver) {
+                if (!gameState.scoreAdded) {
+                    gameState.scoreAdded = true;
+                    int place = CheckHighScore(gameState.score);
+                    if (place >= 0) {
+                        PushNameEntryMenu(place);
+                    } else {
+                        PushGameOverMenu();
+                    }
+                }
+                UpdateMenu();
+                Menu *currentMenu = MenuStackTop(&gameState.menuStack);
+                if (currentMenu) {
+                    DrawRectangle(0, 0, gameScreenWidth, gameScreenHeight, (Color){0, 0, 0, 180});
+                    DrawMenu(*currentMenu, (Rectangle){0, 0, gameScreenWidth, gameScreenHeight});
+                }
+            }
+            if (gameState.pause) {
+                UpdateMenu();
+                Menu *currentMenu = MenuStackTop(&gameState.menuStack);
+                if (currentMenu) {
+                    DrawRectangle(0, 0, gameScreenWidth, gameScreenHeight, (Color){0, 0, 0, 180});
+                    DrawMenu(*currentMenu, (Rectangle){0, 0, gameScreenWidth, gameScreenHeight});
+                }
+            }
         }
         EndTextureMode();
 

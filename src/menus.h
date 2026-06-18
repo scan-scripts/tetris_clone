@@ -1,4 +1,3 @@
-
 #ifndef MENU_H
 #define MENU_H
 #include <stddef.h>
@@ -10,10 +9,18 @@
 #define ITEM_SLIDER(label, p_slider) {.name = (label), .type = SLIDER_ACTION, .action.slider = (p_slider)}
 #define ITEM_TOGGLE(label, p_toggle) {.name = (label), .type = TOGGLE_ACTION, .action.toggle = (p_toggle)}
 #define ITEM_BACK(label) {.name = (label), .type = BACK_ACTION}
+#define ITEM_TEXT_INPUT(label, p_input) {.name = (label), .type = TEXT_INPUT_ACTION, .action.textInput = (p_input)}
 
 #define DEFINE_MENU(var, ttl, menu_items)                                                                              \
     Menu var = {                                                                                                       \
         .title = ttl, .headerText = NULL, .items = menu_items, .itemCount = ARRAY_LEN(menu_items), .selectedIndex = 0}
+
+#define DEFINE_MENU_W_HEADER(var, ttl, header, menu_items)                                                             \
+    Menu var = {.title = ttl,                                                                                          \
+                .headerText = header,                                                                                  \
+                .items = menu_items,                                                                                   \
+                .itemCount = ARRAY_LEN(menu_items),                                                                    \
+                .selectedIndex = 0}
 
 #define DEFINE_SLIDER(var, val, mn, mx, st, tg)                                                                        \
     MenuSlider var = (MenuSlider){.value = val, .min = mn, .max = mx, .step = st, .target = (int *)tg};
@@ -21,13 +28,29 @@
 #define DEFINE_TOGGLE(var, itms, tg)                                                                                   \
     MenuToggle var = (MenuToggle){.items = itms, .count = ARRAY_LEN(itms), .selectedIndex = 0, .target = (int *)tg};
 
-typedef enum ActionType_t { NO_ACTION, MENU_ACTION, FUNC_ACTION, SLIDER_ACTION, TOGGLE_ACTION, BACK_ACTION } ActionType;
+typedef enum ActionType_t {
+    NO_ACTION,
+    MENU_ACTION,
+    FUNC_ACTION,
+    SLIDER_ACTION,
+    TOGGLE_ACTION,
+    BACK_ACTION,
+    TEXT_INPUT_ACTION
+} ActionType;
+
+typedef struct MenuTextInput_t {
+    char *buffer;
+    int maxLen;
+    int len;
+    void (*onConfirm)(void);
+} MenuTextInput;
 
 typedef union MenuAction_t {
     void (*func)(void);
     struct Menu_t *subMenu;
     struct MenuSlider_t *slider;
     struct MenuToggle_t *toggle;
+    struct MenuTextInput_t *textInput;
 } MenuAction;
 
 typedef struct MenuSlider_t {
