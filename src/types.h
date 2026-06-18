@@ -68,7 +68,11 @@ typedef struct GameState_t {
     int sfxVolume;
     SoundStyle musicStyle;
     SoundStyle sfxStyle;
-} GameState;
 
+    bool showShadow;
+    bool allowHold;
+    int nextCount;
+
+} GameState;
 
 #endif

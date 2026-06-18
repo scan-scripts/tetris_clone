@@ -25,12 +25,8 @@
 
 /*
 TODO
-game over logic ( play again)
-now that scoreBoard is global I don't need all the functions to use pointers (I might even want to make it part of the
-game state) menus show next 3 pieces (optional with menu) level select in menu different randomization music refactor so
-gamestate is global variable
+menus show next 3 pieces (optional with menu) level select in menu different randomization music refactor so
 fix lock delay so it still gives you some time even if you have not moved the piece recently
-fix score writting to file
 setup consistant menu system for settings and the main menu. settings would then branch into things like audo menu and
 game modes and level select
 
@@ -660,6 +656,7 @@ int main(void) {
             UpdateMenu();
             Menu *currentMenu = MenuStackTop(&gameState.menuStack);
             if (currentMenu) {
+                DrawRectangleRec((Rectangle){0, 0, gameScreenWidth, gameScreenHeight}, BLUE);
                 DrawMenu(*currentMenu, (Rectangle){0, 0, gameScreenWidth, gameScreenHeight});
             }
         } else {
