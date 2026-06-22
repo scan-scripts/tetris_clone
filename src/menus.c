@@ -37,13 +37,11 @@ Menu *MenuStackTop(MenuStack *ms) {
     return ms->stack[ms->depth];
 }
 void IncrementSlider(MenuSlider *slider) {
-    int val = slider->value;
-    val += slider->step;
+    int val = slider->value + slider->step;
     if (val <= slider->max) {
         slider->value = val;
-        if (val <= slider->max) {
-            slider->value = val;
-            slider->target = &slider->value;
+        if (slider->target != NULL) {
+            *slider->target = slider->value;
         }
     }
 }

@@ -1,6 +1,6 @@
+CAT,23900
+qwe,9400
+bad,3100
+c,2900
 sdf,1900
-AAA,100
-BBB,20
-CCC,10
-DDD,3
-EEE,2
+dd,400

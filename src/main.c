@@ -1,8 +1,9 @@
 #include <assert.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
+#include <time.h>
 
 #include "raylib.h"
 #include "scoreboard.h"
@@ -25,12 +26,10 @@
 
 /*
 TODO
-menus show next 3 pieces (optional with menu) level select in menu different randomization music refactor so
-fix lock delay so it still gives you some time even if you have not moved the piece recently
-setup consistant menu system for settings and the main menu. settings would then branch into things like audo menu and
-game modes and level select
-
-
+    - Finish implementing nextList
+    - level select in menu
+    - fix lock delay so it still gives you some time even if you have not moved the piece recently
+    - music and SFX
 */
 
 Color colors[8] = {
@@ -46,6 +45,19 @@ Color colors[8] = {
 
 // GLOBAL GAME STATE
 GameState gameState = {0};
+
+Music music;
+
+const char *musicFiles[] = {
+    [CLASSIC] = "resources/classical_tetris_music.mp3",
+    [SILLY] = "resources/electronic_tetris_music.mp3",
+};
+
+const char *tetrisSfxFiles[] = {
+    [CLASSIC] = "resources/classical_tetris_music.mp3",
+    [SILLY] = "resources/electronic_tetris_music.mp3",
+}
+
 
 void StartGame(void) {
     InitGameState();
@@ -99,7 +111,6 @@ bool CanPlaceTetromino(Tetromino tetromino) {
             return false;
         }
     }
-
     return true;
 }
 
@@ -200,6 +211,7 @@ void LockCurrentTetromino() {
     }
 }
 
+// TODO Should probs go in the Tetromino.c file
 void RandomTetromino(Tetromino *p_tetromino) {
     p_tetromino->type = GetRandomValue(I, Z);
     p_tetromino->x = 4;
@@ -207,6 +219,7 @@ void RandomTetromino(Tetromino *p_tetromino) {
     p_tetromino->rotState = UP;
 }
 
+// TODO Should probs go in the Tetromino.c file
 void SwapTetrominos(Tetromino *t1, Tetromino *t2) {
     Tetromino temp = *t1;
     *t1 = *t2;
@@ -221,6 +234,46 @@ void ClearBoard() {
     }
 }
 
+Tetromino GetNthNext(int n) { return gameState.nextList.list[(gameState.nextList.headIndex + n) % 14]; }
+
+void ShuffleList(int i_start, int i_end) {
+    for (int i = i_end - 1; i > i_start; i--) {
+        int j = GetRandomValue(i_start, i);
+        SwapTetrominos(&gameState.nextList.list[i], &gameState.nextList.list[j]);
+    }
+}
+
+void ShuffleNextListSection(NextListSection section) {
+    for (int i = 0; i < +7; i++) {
+        // TODO: maybe make a const global variable that just the array with 7 peices and then mem copy it instead
+        gameState.nextList.list[section + i] = (Tetromino){.type = i + 1, .rotState = RIGHT, .x = 0, .y = 0};
+    }
+    ShuffleList(section, section + 7);
+}
+
+void RandomizeNextListSection(NextListSection section) {
+    for (unsigned int i = section; i < section + 7; i++) {
+        RandomTetromino(&(gameState.nextList.list[i]));
+    }
+}
+
+void InitNextList() {
+    gameState.nextList.headIndex = 0;
+    (gameState.settings.randomShuffle) ? ShuffleNextListSection(PONG) : RandomizeNextListSection(PONG);
+    (gameState.settings.randomShuffle) ? ShuffleNextListSection(PING) : RandomizeNextListSection(PING);
+}
+
+void initSettings() {
+    gameState.settings.musicVolume = 50;
+    gameState.settings.sfxVolume = 50;
+    gameState.settings.musicStyle = CLASSIC;
+    gameState.settings.sfxStyle = CLASSIC;
+    gameState.settings.randomShuffle = false;
+    gameState.settings.showShadow = true;
+    gameState.settings.allowHold = true;
+    gameState.settings.nextCount = 1;
+}
+
 void InitGameState() {
 
     ClearBoard();
@@ -233,7 +286,7 @@ void InitGameState() {
 
     gameState.fallTimer = 0.0f;
     gameState.fallInterval = 1.0f;
-
+    // gameState.showShadow = true;
     gameState.moveTimer = 0.0f;
     gameState.moveDelay = 0.15f;
     gameState.moveInterval = 0.05f;
@@ -246,20 +299,27 @@ void InitGameState() {
     gameState.score = 0;
     gameState.linesCleared = 0;
     gameState.level = 1;
-
+    // gameState.nextCount = 1;
     gameState.gameOver = false;
     gameState.pause = false;
     gameState.streak = false;
     gameState.scoreAdded = false;
     InitScoreBoard();
     gameState.menuStack.depth = -1;
+    InitNextList();
 }
 
 void SpawnNextTetromino() {
-    gameState.current = gameState.next;
+    gameState.current = gameState.nextList.list[gameState.nextList.headIndex];
     gameState.current.x = 4;
     gameState.current.y = 0;
-    RandomTetromino(&gameState.next);
+
+    if (gameState.nextList.headIndex == PING) {
+        (gameState.settings.randomShuffle) ? ShuffleNextListSection(PONG) : RandomizeNextListSection(PONG);
+    } else if (gameState.nextList.headIndex == PONG) {
+        (gameState.settings.randomShuffle) ? ShuffleNextListSection(PING) : RandomizeNextListSection(PING);
+    }
+    gameState.nextList.headIndex = (gameState.nextList.headIndex + 1) % 14;
     gameState.alreadyHeld = false;
     gameState.lockDelayTimer = 0.0f;
 }
@@ -360,7 +420,6 @@ void DrawBoard() {
             if (type == EMPTY) {
                 continue;
             }
-
             DrawSquare((Point){x, y}, colors[type]);
             DrawShadowSquare((Point){x, y}, GRAY);
         }
@@ -428,6 +487,7 @@ void FastDrop() {
 }
 
 void HoldCurrent() {
+
     if (gameState.hold.type == EMPTY) {
         gameState.hold = gameState.current;
         SpawnNextTetromino();
@@ -464,7 +524,8 @@ void UpdateGame(float dT) {
     if (gameState.pause) {
         return;
     }
-    if (IsKeyPressed(KEY_C) || IsKeyPressed(KEY_H)) {
+    if ((IsKeyPressed(KEY_C) || IsKeyPressed(KEY_H)) && gameState.settings.allowHold) {
+
         HoldCurrent();
     }
     if (IsKeyPressed(KEY_UP)) {
@@ -472,7 +533,6 @@ void UpdateGame(float dT) {
             gameState.lockDelayTimer = 0.0f;
         }
     }
-
     int dir = 0;
 
     if (IsKeyDown(KEY_LEFT)) {
@@ -594,33 +654,44 @@ void DrawTetrominoInBox(Tetromino tetromino, int x, int y) {
     }
 }
 
-void DrawNext() { DrawTetrominoInBox(gameState.next, PLAY_AREA_X + PLAY_AREA_WIDTH, PLAY_AREA_Y); }
+// TODO: update this to work with the next list. should be able to handle drawing from 0 to 3 of the next in the list
+void DrawNext() {
+    for (int i = 0; i < gameState.settings.nextCount; i++) {
+        DrawTetrominoInBox(GetNthNext(i), PLAY_AREA_X + PLAY_AREA_WIDTH, PLAY_AREA_Y + CELL_HEIGHT * 4 * i);
+    }
+}
 
 void DrawHold() { DrawTetrominoInBox(gameState.hold, PLAY_AREA_X - 5 * CELL_WIDTH, PLAY_AREA_Y); }
 
+// TODO: update the formatting here so it looks nicer maybe move it to under the hold
 void DrawStatsBox() {
-    DrawText(TextFormat("Lines cleared: %i\nScore: %d, level: %d, FPS =%d ", gameState.linesCleared, gameState.score,
+    DrawText(TextFormat("Lines cleared: %i\nScore: %d, level: %d ", gameState.linesCleared, gameState.score,
                         gameState.level, GetFPS()),
-             0, 0, 20, RED);
+             0, 0, 20, WHITE);
 }
 
 void DrawGame() {
     ClearBackground(BLACK);
     DrawRectangle(0, 0, GAME_SCREEN_WIDTH, GAME_SCREEN_WIDTH, BLUE);
     DrawNext();
-    DrawHold();
+    if (gameState.settings.allowHold) {
+        DrawHold();
+    }
 
     DrawRectangle(PLAY_AREA_X, PLAY_AREA_Y, PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT, DARKGRAY);
     DrawBackgroundGrid();
     DrawBoard();
     DrawCurrentTetromino();
     Tetromino shadow = GetShadowTetromino();
-    DrawTetrominoShadow(shadow);
+    if (gameState.settings.showShadow) {
+        DrawTetrominoShadow(shadow);
+    }
     DrawStatsBox();
 }
 
 int main(void) {
-    SetRandomSeed(6969);
+    SetRandomSeed((unsigned int)time(NULL));
+    // SetRandomSeed(6969);
 
     const int initialWindowWidth = 1600;
     const int initialWindowHeight = 1600;
@@ -630,8 +701,18 @@ int main(void) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(initialWindowWidth, initialWindowHeight, "Tetris");
+    InitAudioDevice();
 
+    initSettings();
     InitGameState();
+
+    bool musicLoaded = false;
+    if (gameState.settings.musicStyle != NONE) {
+        music = LoadMusicStream(musicFiles[gameState.settings.musicStyle]);
+        PlayMusicStream(music);
+        musicLoaded = true;
+    }
+    SoundStyle lastMusicStyle = gameState.settings.musicStyle;
     gameState.mainMenu = true;
     gameState.menuStack.stack[0] = &mainMenu;
     gameState.menuStack.depth = 0;
@@ -643,6 +724,24 @@ int main(void) {
     float dT;
     while (!WindowShouldClose()) {
         dT = GetFrameTime();
+
+        if (musicLoaded) {
+            UpdateMusicStream(music);
+        }
+
+        if (gameState.settings.musicStyle != lastMusicStyle) {
+            lastMusicStyle = gameState.settings.musicStyle;
+            if (musicLoaded) {
+                StopMusicStream(music);
+                UnloadMusicStream(music);
+                musicLoaded = false;
+            }
+            if (gameState.settings.musicStyle != NONE) {
+                music = LoadMusicStream(musicFiles[gameState.settings.musicStyle]);
+                PlayMusicStream(music);
+                musicLoaded = true;
+            }
+        }
 
         float scale = MIN((float)GetScreenWidth() / gameScreenWidth, (float)GetScreenHeight() / gameScreenHeight);
         Rectangle source = {0.0f, 0.0f, (float)target.texture.width, (float)-target.texture.height};
@@ -698,7 +797,11 @@ int main(void) {
         EndDrawing();
     }
 
+    if (musicLoaded) {
+        UnloadMusicStream(music);
+    }
     UnloadRenderTexture(target);
+    CloseAudioDevice();
     CloseWindow();
 
     return 0;

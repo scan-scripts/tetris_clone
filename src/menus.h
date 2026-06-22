@@ -66,6 +66,7 @@ typedef struct ToggleItem_t {
     int value;
 } ToggleItem;
 
+// TODO: add a field for the way the itmes should be layed out
 typedef struct MenuToggle_t {
     ToggleItem *items;
     int selectedIndex;
@@ -79,6 +80,7 @@ typedef struct MenuItem_t {
     ActionType type;
 } MenuItem;
 
+// TODO: add a field for the way the itmes should be layed out
 typedef struct Menu_t {
     const char *title;
     char *headerText;

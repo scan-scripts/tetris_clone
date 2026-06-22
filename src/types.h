@@ -23,22 +23,42 @@ typedef struct Tetromino_t {
     int y;
 } Tetromino;
 
-typedef enum SoundStyle_t { CLASSIC, SILLY } SoundStyle;
+typedef enum SoundStyle_t { CLASSIC, SILLY, NONE } SoundStyle;
 
 typedef struct ScoreElement_t {
     char name[4];
     int score;
 } ScoreElement;
 
+typedef enum NextListSection_t { PING = 0, PONG = 7 } NextListSection;
+
+typedef struct NextList_t {
+    int headIndex;
+    Tetromino list[14];
+} NextList;
+
 typedef struct ScoreBoard_t {
     ScoreElement scores[N_SCORE_ELS];
 } ScoreBoard;
+
+typedef struct Settings_t {
+    int musicVolume;
+    int sfxVolume;
+    SoundStyle musicStyle;
+    SoundStyle sfxStyle;
+    int randomShuffle;
+    int showShadow;
+    int allowHold;
+    int nextCount;
+} Settings;
 
 typedef struct GameState_t {
     TetrominoType board[BOARD_HEIGHT][BOARD_WIDTH];
     Tetromino current;
     Tetromino next;
     Tetromino hold;
+
+    NextList nextList;
 
     bool alreadyHeld;
 
@@ -64,14 +84,17 @@ typedef struct GameState_t {
     ScoreBoard scoreBoard;
     MenuStack menuStack;
 
-    int musicVolume;
-    int sfxVolume;
-    SoundStyle musicStyle;
-    SoundStyle sfxStyle;
+    Settings settings;
 
-    bool showShadow;
-    bool allowHold;
-    int nextCount;
+    //     int musicVolume;
+    //     int sfxVolume;
+    //     SoundStyle musicStyle;
+    //     SoundStyle sfxStyle;
+    //     bool randomShuffle;
+    //
+    //     bool showShadow;
+    //     bool allowHold;
+    //     int nextCount;
 
 } GameState;
 

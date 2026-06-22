@@ -27,8 +27,10 @@ void UpdateMenu() {
     MenuItem *currentItem = &currentMenu->items[currentMenu->selectedIndex];
 
     int dir = 0;
-    if (IsKeyDown(KEY_RIGHT)) dir = 1;
-    if (IsKeyDown(KEY_LEFT))  dir = -1;
+    if (IsKeyDown(KEY_RIGHT))
+        dir = 1;
+    if (IsKeyDown(KEY_LEFT))
+        dir = -1;
 
     bool fireRepeat = false;
     if (dir != 0) {
@@ -148,7 +150,6 @@ void DrawMenuSlider(MenuItem menuItem, int fontSize, Rectangle rec, float *p_yOf
     *p_yOffset += barHeight;
 }
 
-// TODO
 void DrawMenuToggle(MenuItem menuItem, int fontSize, Rectangle rec, float *p_yOffset, Color color) {
     float spacing = fontSize / 10.0f;
     float totalTextWidth = 0;
@@ -192,6 +193,9 @@ void DrawMenuItem(MenuItem menuItem, int fontSize, Rectangle rec, float *p_yOffs
         DrawTextCenterAligned(menuItem.name, fontSize, rec, p_yOffset, color);
     }
 }
+
+// mouse controls for menus:
+// - hovering should highlight the menu
 
 void DrawMenu(Menu menu, Rectangle rec) {
     int titleFontSize = 60;
@@ -283,12 +287,12 @@ DEFINE_MENU(mainMenu, "TETRIS", mainItems);
 MenuItem settingsItems[] = {ITEM_SUB("Sound", &soundMenu), ITEM_SUB("Style", &styleMenu), ITEM_BACK("Back")};
 DEFINE_MENU(settingsMenu, "SETTINGS", settingsItems);
 
-DEFINE_SLIDER(musicSlider, 50, 0, 100, 1, &gameState.musicVolume);
-DEFINE_SLIDER(sfxSlider, 50, 0, 100, 1, &gameState.sfxVolume);
+DEFINE_SLIDER(musicSlider, 50, 0, 100, 1, &gameState.settings.musicVolume);
+DEFINE_SLIDER(sfxSlider, 50, 0, 100, 1, &gameState.settings.sfxVolume);
 
-ToggleItem soundStyleItems[] = {{"Classic", CLASSIC}, {"Silly", SILLY}};
-DEFINE_TOGGLE(musicStyleToggle, soundStyleItems, &gameState.musicStyle);
-DEFINE_TOGGLE(sfxStyleToggle, soundStyleItems, &gameState.sfxStyle);
+ToggleItem soundStyleItems[] = {{"Classic", CLASSIC}, {"Silly", SILLY}, {"None", NONE}};
+DEFINE_TOGGLE(musicStyleToggle, soundStyleItems, &gameState.settings.musicStyle);
+DEFINE_TOGGLE(sfxStyleToggle, soundStyleItems, &gameState.settings.sfxStyle);
 
 MenuItem soundItems[] = {ITEM_SLIDER("Music Volume", &musicSlider), ITEM_TOGGLE("Music Style", &musicStyleToggle),
                          ITEM_SLIDER("SFX Volume", &sfxSlider), ITEM_TOGGLE("SFX Style", &sfxStyleToggle),
@@ -298,14 +302,20 @@ DEFINE_MENU(soundMenu, "SOUND SETTINGS", soundItems);
 
 ToggleItem onOffToggleItems[] = {{"On", true}, {"Off", false}};
 
-DEFINE_TOGGLE(showShadowToggle, onOffToggleItems, &gameState.showShadow);
-DEFINE_TOGGLE(allowHoldToggle, onOffToggleItems, &gameState.allowHold);
+DEFINE_TOGGLE(showShadowToggle, onOffToggleItems, &gameState.settings.showShadow);
+DEFINE_TOGGLE(allowHoldToggle, onOffToggleItems, &gameState.settings.allowHold);
 
-DEFINE_SLIDER(nextCountSlider, 1, 0, 3, 1, &gameState.nextCount);
+DEFINE_SLIDER(nextCountSlider, 1, 0, 3, 1, &gameState.settings.nextCount);
+
+ToggleItem randomTypeToggleItems[] = {{"Random", false}, {"Shuffle", true}};
+
+DEFINE_TOGGLE(randomTypeToggle, randomTypeToggleItems, &gameState.settings.randomShuffle);
 
 MenuItem gameModeItems[] = {ITEM_TOGGLE("Show Shadow", &showShadowToggle),
                             ITEM_SLIDER("Show Next Count", &nextCountSlider),
-                            ITEM_TOGGLE("Allow Hold", &allowHoldToggle), ITEM_BACK("Back")};
+                            ITEM_TOGGLE("Allow Hold", &allowHoldToggle), ITEM_TOGGLE("Random Type", &randomTypeToggle),
+
+                            ITEM_BACK("Back")};
 
 DEFINE_MENU(styleMenu, "GAME MODE SETTINGS", gameModeItems);
 
