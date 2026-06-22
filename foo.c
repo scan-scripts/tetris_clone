@@ -1,8 +1,9 @@
 #include <stdio.h>
 
 int main() {
-    printf("Hello, World,");
-    int x = 1;
-    printf("x = %d, x+1 = %d", x, x + 1);
+    char name[100];
+    printf("What is your name? ");
+    scanf("%s", name);
+    printf("Hello %s\n", name);
     return 0;
 }
