@@ -1,6 +1,7 @@
 #include "tetris_menus.h"
 #include "raylib.h"
 #include "scoreboard.h"
+#include "sound.h"
 #include <stdio.h>
 
 extern GameState gameState;
@@ -287,12 +288,12 @@ DEFINE_MENU(mainMenu, "TETRIS", mainItems);
 MenuItem settingsItems[] = {ITEM_SUB("Sound", &soundMenu), ITEM_SUB("Style", &styleMenu), ITEM_BACK("Back")};
 DEFINE_MENU(settingsMenu, "SETTINGS", settingsItems);
 
-DEFINE_SLIDER(musicSlider, 50, 0, 100, 1, &gameState.settings.musicVolume);
-DEFINE_SLIDER(sfxSlider, 50, 0, 100, 1, &gameState.settings.sfxVolume);
+DEFINE_SLIDER(musicSlider, 50, 0, 100, 1, &gameState.settings.musicVolume, ApplyMusicVolume);
+DEFINE_SLIDER(sfxSlider, 50, 0, 100, 1, &gameState.settings.sfxVolume, NULL);
 
 ToggleItem soundStyleItems[] = {{"Classic", CLASSIC}, {"Silly", SILLY}, {"None", NONE}};
-DEFINE_TOGGLE(musicStyleToggle, soundStyleItems, &gameState.settings.musicStyle);
-DEFINE_TOGGLE(sfxStyleToggle, soundStyleItems, &gameState.settings.sfxStyle);
+DEFINE_TOGGLE(musicStyleToggle, soundStyleItems, &gameState.settings.musicStyle, ApplyMusicStyle);
+DEFINE_TOGGLE(sfxStyleToggle, soundStyleItems, &gameState.settings.sfxStyle, NULL);
 
 MenuItem soundItems[] = {ITEM_SLIDER("Music Volume", &musicSlider), ITEM_TOGGLE("Music Style", &musicStyleToggle),
                          ITEM_SLIDER("SFX Volume", &sfxSlider), ITEM_TOGGLE("SFX Style", &sfxStyleToggle),
@@ -302,14 +303,14 @@ DEFINE_MENU(soundMenu, "SOUND SETTINGS", soundItems);
 
 ToggleItem onOffToggleItems[] = {{"On", true}, {"Off", false}};
 
-DEFINE_TOGGLE(showShadowToggle, onOffToggleItems, &gameState.settings.showShadow);
-DEFINE_TOGGLE(allowHoldToggle, onOffToggleItems, &gameState.settings.allowHold);
+DEFINE_TOGGLE(showShadowToggle, onOffToggleItems, &gameState.settings.showShadow, NULL);
+DEFINE_TOGGLE(allowHoldToggle, onOffToggleItems, &gameState.settings.allowHold, NULL);
 
-DEFINE_SLIDER(nextCountSlider, 1, 0, 3, 1, &gameState.settings.nextCount);
+DEFINE_SLIDER(nextCountSlider, 1, 0, 3, 1, &gameState.settings.nextCount, NULL);
 
 ToggleItem randomTypeToggleItems[] = {{"Random", false}, {"Shuffle", true}};
 
-DEFINE_TOGGLE(randomTypeToggle, randomTypeToggleItems, &gameState.settings.randomShuffle);
+DEFINE_TOGGLE(randomTypeToggle, randomTypeToggleItems, &gameState.settings.randomShuffle, NULL);
 
 MenuItem gameModeItems[] = {ITEM_TOGGLE("Show Shadow", &showShadowToggle),
                             ITEM_SLIDER("Show Next Count", &nextCountSlider),

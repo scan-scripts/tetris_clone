@@ -7,6 +7,7 @@
 
 #include "raylib.h"
 #include "scoreboard.h"
+#include "sound.h"
 #include "tetris_menus.h"
 #include "tetromino.h"
 #include "types.h"
@@ -45,19 +46,6 @@ Color colors[8] = {
 
 // GLOBAL GAME STATE
 GameState gameState = {0};
-
-Music music;
-
-const char *musicFiles[] = {
-    [CLASSIC] = "resources/classical_tetris_music.mp3",
-    [SILLY] = "resources/electronic_tetris_music.mp3",
-};
-
-const char *tetrisSfxFiles[] = {
-    [CLASSIC] = "resources/classical_tetris_music.mp3",
-    [SILLY] = "resources/electronic_tetris_music.mp3",
-}
-
 
 void StartGame(void) {
     InitGameState();
@@ -701,18 +689,9 @@ int main(void) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(initialWindowWidth, initialWindowHeight, "Tetris");
-    InitAudioDevice();
-
     initSettings();
     InitGameState();
-
-    bool musicLoaded = false;
-    if (gameState.settings.musicStyle != NONE) {
-        music = LoadMusicStream(musicFiles[gameState.settings.musicStyle]);
-        PlayMusicStream(music);
-        musicLoaded = true;
-    }
-    SoundStyle lastMusicStyle = gameState.settings.musicStyle;
+    InitSound();
     gameState.mainMenu = true;
     gameState.menuStack.stack[0] = &mainMenu;
     gameState.menuStack.depth = 0;
@@ -725,23 +704,7 @@ int main(void) {
     while (!WindowShouldClose()) {
         dT = GetFrameTime();
 
-        if (musicLoaded) {
-            UpdateMusicStream(music);
-        }
-
-        if (gameState.settings.musicStyle != lastMusicStyle) {
-            lastMusicStyle = gameState.settings.musicStyle;
-            if (musicLoaded) {
-                StopMusicStream(music);
-                UnloadMusicStream(music);
-                musicLoaded = false;
-            }
-            if (gameState.settings.musicStyle != NONE) {
-                music = LoadMusicStream(musicFiles[gameState.settings.musicStyle]);
-                PlayMusicStream(music);
-                musicLoaded = true;
-            }
-        }
+        TickSound();
 
         float scale = MIN((float)GetScreenWidth() / gameScreenWidth, (float)GetScreenHeight() / gameScreenHeight);
         Rectangle source = {0.0f, 0.0f, (float)target.texture.width, (float)-target.texture.height};
@@ -797,11 +760,8 @@ int main(void) {
         EndDrawing();
     }
 
-    if (musicLoaded) {
-        UnloadMusicStream(music);
-    }
+    CleanupSound();
     UnloadRenderTexture(target);
-    CloseAudioDevice();
     CloseWindow();
 
     return 0;

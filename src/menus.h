@@ -22,11 +22,12 @@
                 .itemCount = ARRAY_LEN(menu_items),                                                                    \
                 .selectedIndex = 0}
 
-#define DEFINE_SLIDER(var, val, mn, mx, st, tg)                                                                        \
-    MenuSlider var = (MenuSlider){.value = val, .min = mn, .max = mx, .step = st, .target = (int *)tg};
+#define DEFINE_SLIDER(var, val, mn, mx, st, tg, cb)                                                                    \
+    MenuSlider var = (MenuSlider){.value = val, .min = mn, .max = mx, .step = st, .target = (int *)tg, .onChange = cb};
 
-#define DEFINE_TOGGLE(var, itms, tg)                                                                                   \
-    MenuToggle var = (MenuToggle){.items = itms, .count = ARRAY_LEN(itms), .selectedIndex = 0, .target = (int *)tg};
+#define DEFINE_TOGGLE(var, itms, tg, cb)                                                                               \
+    MenuToggle var = (MenuToggle){                                                                                     \
+        .items = itms, .count = ARRAY_LEN(itms), .selectedIndex = 0, .target = (int *)tg, .onChange = cb};
 
 typedef enum ActionType_t {
     NO_ACTION,
@@ -59,6 +60,7 @@ typedef struct MenuSlider_t {
     int max;
     int step;
     int *target;
+    void (*onChange)(void);
 } MenuSlider;
 
 typedef struct ToggleItem_t {
@@ -72,6 +74,7 @@ typedef struct MenuToggle_t {
     int selectedIndex;
     int count;
     int *target;
+    void (*onChange)(void);
 } MenuToggle;
 
 typedef struct MenuItem_t {

@@ -25,6 +25,18 @@ typedef struct Tetromino_t {
 
 typedef enum SoundStyle_t { CLASSIC, SILLY, NONE } SoundStyle;
 
+typedef enum SoundEffects_t {
+    MOVE_SOUND,
+    MENU_SOUND,
+    LINE_CLEARED_SOUND,
+    SINGLE,
+    DOUBLE_SOUND,
+    TRIPLE_SOUND,
+    TETRIS_SOUND,
+    B2B_TETRIS_SOUND
+
+} SoundEffects;
+
 typedef struct ScoreElement_t {
     char name[4];
     int score;
